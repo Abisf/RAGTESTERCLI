@@ -1,0 +1,16 @@
+typer[all]
+openai>=1.0.0
+ragas>=0.1.0
+tabulate
+pyyaml
+pandas
+datasets
+langchain-openai
+ragchecker>=0.1.9
+# Multi-provider LLM support
+langchain-google-genai  # Google Gemini
+langchain-anthropic     # Anthropic Claude  
+langchain-mistralai     # Mistral
+langchain-together      # Together.ai (for open source models)
+google-generativeai     # Direct Gemini SDK
+anthropic               # Direct Anthropic SDK 

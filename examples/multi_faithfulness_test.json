@@ -1,0 +1,44 @@
+[
+  {
+    "question": "What is the capital of France?",
+    "context": [
+      "France is a country in Western Europe. Its capital and largest city is Paris, which is located in the north-central part of the country."
+    ],
+    "answer": "The capital of France is Paris."
+  },
+  {
+    "question": "What programming languages does React support?",
+    "context": [
+      "React is a JavaScript library for building user interfaces. It was developed by Facebook and is primarily used with JavaScript, though it can also be used with TypeScript."
+    ],
+    "answer": "React supports JavaScript and TypeScript programming languages."
+  },
+  {
+    "question": "How do solar panels work?",
+    "context": [
+      "Solar panels convert sunlight into electricity through photovoltaic cells. When sunlight hits the cells, it knocks electrons loose from atoms, generating a flow of electricity."
+    ],
+    "answer": "Solar panels work by using photovoltaic cells that convert sunlight into electricity. The sunlight knocks electrons loose from atoms, creating an electrical current."
+  },
+  {
+    "question": "What is machine learning?",
+    "context": [
+      "Machine learning is a subset of artificial intelligence that enables computers to learn and make decisions from data without being explicitly programmed for every task."
+    ],
+    "answer": "Machine learning is a type of artificial intelligence where computers learn from data and can make predictions or decisions without being programmed for each specific task."
+  },
+  {
+    "question": "What causes earthquakes?",
+    "context": [
+      "Earthquakes are caused by the sudden release of energy stored in the Earth's crust. This typically happens when tectonic plates move and create friction along fault lines."
+    ],
+    "answer": "Earthquakes are caused by volcanic eruptions and meteor impacts on Earth's surface."
+  },
+  {
+    "question": "How does photosynthesis work?",
+    "context": [
+      "Photosynthesis is the process by which plants convert carbon dioxide and water into glucose using sunlight and chlorophyll. This process also produces oxygen as a byproduct."
+    ],
+    "answer": "Photosynthesis allows plants to convert carbon dioxide and water into glucose using sunlight and chlorophyll, while producing oxygen as a byproduct."
+  }
+] 

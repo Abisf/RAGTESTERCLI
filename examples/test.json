@@ -1,0 +1,17 @@
+[
+  {
+    "question": "When was GPT-4 released?",
+    "context": ["GPT-4 was released in March 2023 by OpenAI.", "It is a large multimodal model that can accept image and text inputs."],
+    "answer": "GPT-4 came out in 2023."
+  },
+  {
+    "question": "What is the capital of France?",
+    "context": ["Paris is the capital and most populous city of France.", "It is located in the north of France on the river Seine."],
+    "answer": "The capital of France is Paris, which is located on the Seine river."
+  },
+  {
+    "question": "How does photosynthesis work?",
+    "context": ["Photosynthesis is the process by which plants convert sunlight into energy.", "It occurs in the chloroplasts and involves converting carbon dioxide and water into glucose using light energy."],
+    "answer": "Photosynthesis is when plants use sunlight to make food from carbon dioxide and water, producing glucose and oxygen as byproducts."
+  }
+] 
