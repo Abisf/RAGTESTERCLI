@@ -105,24 +105,15 @@ class RAGCheckerHallucinationEvaluator(BaseEvaluator):
     def _extract_hallucination_score(self, result: Dict[str, Any]) -> float:
         """Extract hallucination score from RAGChecker output."""
         try:
-            # DEBUG: Let's see what we actually get
-            print(f"RAGChecker result keys: {list(result.keys())}")
-            if "metrics" in result:
-                print(f"Metrics keys: {list(result['metrics'].keys())}")
-                if "generator_metrics" in result["metrics"]:
-                    print(f"Generator metrics keys: {list(result['metrics']['generator_metrics'].keys())}")
-            
             # Navigate to the hallucination score in RAGChecker output
             score = result["metrics"]["generator_metrics"]["hallucination"]
-            print(f"Found score: {score}")
             return float(score)
         except (KeyError, IndexError, TypeError) as e:
             print(f"Score extraction failed: {e}")
-            print(f"Available result structure: {result}")
             return 0.0
     
     def get_raw_output(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Get raw RAGChecker output for debugging."""
+        """Get raw RAGChecker output for analysis."""
         question = data.get('question', '')
         context = data.get('context', [])
         answer = data.get('answer', '')

@@ -151,7 +151,7 @@ def list_metrics():
 @app.command()  
 def version():
     """Show version information."""
-    typer.echo("RAGTesterCLI v1.0 - Unified RAG Evaluation")
+    typer.echo("RAGTesterCLI - Unified RAG Evaluation")
     typer.echo("  Multi-provider LLM support (OpenAI, Anthropic, Google, OpenRouter)")
     typer.echo("  True RAGAS & RAGChecker integration")
     typer.echo("  One API key for any provider")

@@ -106,7 +106,7 @@ output:
   decimal_places: 3
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 RAGTESTERCLI/
@@ -124,7 +124,7 @@ RAGTESTERCLI/
 └── requirements.txt               # Dependencies
 ```
 
-## 🧩 Adding New Metrics
+## Adding New Metrics
 
 1. Create a new evaluator in `evaluators/`:
 ```python
@@ -144,7 +144,7 @@ EVALUATORS = {
 }
 ```
 
-## 📈 Output Example
+## Output Example
 
 ### JSON Format
 ```json
@@ -177,13 +177,13 @@ EVALUATION SUMMARY
 └─────────────────────┴─────────────────────────┘
 ```
 
-## 🛠️ Development
+## Development
 
-This is an MVP focused on:
-- ✅ Plug-and-play metric testing
-- ✅ LLM-driven scoring
-- ✅ Clean CLI interface  
-- ✅ Expandable backend
+This tool focuses on:
+- Plug-and-play metric testing
+- LLM-driven scoring
+- Clean CLI interface
+- Expandable backend
 
 Future enhancements could include:
 - Additional metric providers (LynX, HaluBench, DeepEval)
@@ -192,10 +192,10 @@ Future enhancements could include:
 - Web interface
 - Integration with CI/CD pipelines
 
-## 📄 License
+## License
 
 [Add your license here]
 
-## 🤝 Contributing
+## Contributing
 
 [Add contribution guidelines here] 
