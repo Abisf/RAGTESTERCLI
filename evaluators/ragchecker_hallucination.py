@@ -21,7 +21,7 @@ class RAGCheckerHallucinationEvaluator(BaseEvaluator):
         self.api_base = os.getenv("OPENAI_API_BASE")
         
         if not self.api_key:
-            raise ValueError("API key not found. Set via --api-key flag.")
+            raise ValueError("API key not found. Set via --api-key flag or .env file.")
         
         # Configure RAGChecker with unified model
         # For OpenRouter/custom bases, we need to handle the model format
@@ -106,19 +106,19 @@ class RAGCheckerHallucinationEvaluator(BaseEvaluator):
         """Extract hallucination score from RAGChecker output."""
         try:
             # DEBUG: Let's see what we actually get
-            print(f"🔍 RAGChecker result keys: {list(result.keys())}")
+            print(f"RAGChecker result keys: {list(result.keys())}")
             if "metrics" in result:
-                print(f"🔍 Metrics keys: {list(result['metrics'].keys())}")
+                print(f"Metrics keys: {list(result['metrics'].keys())}")
                 if "generator_metrics" in result["metrics"]:
-                    print(f"🔍 Generator metrics keys: {list(result['metrics']['generator_metrics'].keys())}")
+                    print(f"Generator metrics keys: {list(result['metrics']['generator_metrics'].keys())}")
             
             # Navigate to the hallucination score in RAGChecker output
             score = result["metrics"]["generator_metrics"]["hallucination"]
-            print(f"✅ Found score: {score}")
+            print(f"Found score: {score}")
             return float(score)
         except (KeyError, IndexError, TypeError) as e:
-            print(f"❌ Score extraction failed: {e}")
-            print(f"❌ Available result structure: {result}")
+            print(f"Score extraction failed: {e}")
+            print(f"Available result structure: {result}")
             return 0.0
     
     def get_raw_output(self, data: Dict[str, Any]) -> Dict[str, Any]:

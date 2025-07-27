@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-🎯 RAGTesterCLI - Unified RAG Evaluation Tool
+RAGTesterCLI - Unified RAG Evaluation Tool
 """
 
 import os
 import typer
 from typing import Optional
 from runner import run_evaluation
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = typer.Typer()
 
@@ -48,14 +52,14 @@ def test(
     input: str = typer.Option(..., "--input", "-i", help="Path to input JSON file"),
     metric: str = typer.Option(..., "--metric", "-m", help="Evaluation metric to use"),
     llm_model: str = typer.Option(..., "--llm-model", help="Model name, e.g. gpt-4, claude-3-sonnet, gemini-pro"),
-    api_key: str = typer.Option(..., "--api-key", help="API key for your chosen provider"),
-    api_base: Optional[str] = typer.Option(None, "--api-base", help="(Optional) Custom API base URL"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", help="API key for your chosen provider (or use .env)"),
+    api_base: Optional[str] = typer.Option(None, "--api-base", help="(Optional) Custom API base URL (or use .env)"),
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path (optional)"),
     format: str = typer.Option("json", "--format", "-f", help="Output format: json, csv, table"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
 ):
     """
-    🎯 RAGTesterCLI - ONE API key, ANY provider, BOTH RAGAS and RAGChecker
+    RAGTesterCLI - Unified RAG evaluation with support for multiple providers
     
     Examples:
       # OpenAI
@@ -71,12 +75,20 @@ def test(
       ragtester test --llm-model gemini-pro --api-key AIzaSy... --api-base https://generativelanguage.googleapis.com/v1
     """
     
-    # 1) Detect provider and set appropriate env var
-    key_var = detect_provider(llm_model)
-    os.environ[key_var] = api_key
-    
-    # 2) Mirror for OPENAI_API_KEY so RAGAS works
-    os.environ["OPENAI_API_KEY"] = api_key
+    # 1) Get API key from CLI or environment
+    if api_key:
+        # Use CLI-provided API key
+        key_var = detect_provider(llm_model)
+        os.environ[key_var] = api_key
+        os.environ["OPENAI_API_KEY"] = api_key  # Mirror for RAGAS
+    else:
+        # Use environment variables from .env
+        key_var = detect_provider(llm_model)
+        env_api_key = os.getenv(key_var)
+        if not env_api_key:
+            typer.echo(f"Error: No API key found. Set {key_var} in .env file or use --api-key")
+            raise typer.Exit(1)
+        api_key = env_api_key
     
     # 3) Clean model name for actual API calls (remove provider prefixes)
     clean_model = clean_model_name(llm_model, api_base)
@@ -85,18 +97,21 @@ def test(
     # 4) Set custom API base if provided
     if api_base:
         os.environ["OPENAI_API_BASE"] = api_base
-        
-        # Special handling for OpenRouter - set LiteLLM-specific vars
-        if "openrouter.ai" in api_base and api_key.startswith("sk-or-v1-"):
-            os.environ["LITELLM_API_KEY"] = api_key
-            os.environ["LITELLM_API_BASE"] = api_base
-            os.environ["OPENROUTER_API_KEY"] = api_key  # Some versions use this
-            print(f"✅ Set LiteLLM vars for OpenRouter")
-        else:
-            os.environ["OPENAI_API_BASE"] = api_base
+    else:
+        # Try to get from environment
+        env_api_base = os.getenv("OPENAI_API_BASE")
+        if env_api_base:
+            api_base = env_api_base
+    
+    # Special handling for OpenRouter - set LiteLLM-specific vars
+    if api_base and "openrouter.ai" in api_base and api_key.startswith("sk-or-v1-"):
+        os.environ["LITELLM_API_KEY"] = api_key
+        os.environ["LITELLM_API_BASE"] = api_base
+        os.environ["OPENROUTER_API_KEY"] = api_key  # Some versions use this
+        print(f"Set LiteLLM vars for OpenRouter")
         
     if verbose:
-        typer.echo(f"🎯 RAGTesterCLI Configuration:")
+        typer.echo(f"RAGTesterCLI Configuration:")
         typer.echo(f"  Original Model: {llm_model}")
         typer.echo(f"  Clean Model: {clean_model}")
         typer.echo(f"  Provider Key: {key_var}")
@@ -128,7 +143,7 @@ def list_metrics():
     """List available evaluation metrics."""
     from evaluators import get_available_metrics
     
-    typer.echo("📊 Available Metrics:")
+    typer.echo("Available Metrics:")
     metrics = get_available_metrics()
     for name, description in metrics.items():
         typer.echo(f"  • {name}: {description}")
@@ -136,10 +151,10 @@ def list_metrics():
 @app.command()  
 def version():
     """Show version information."""
-    typer.echo("🎯 RAGTesterCLI v0.1 - Universal RAG Evaluation")
-    typer.echo("   ✅ Multi-provider LLM support (OpenAI, Anthropic, Google, OpenRouter)")
-    typer.echo("   ✅ True RAGAS & RAGChecker integration")
-    typer.echo("   ✅ One API key for any provider")
+    typer.echo("RAGTesterCLI v1.0 - Unified RAG Evaluation")
+    typer.echo("  Multi-provider LLM support (OpenAI, Anthropic, Google, OpenRouter)")
+    typer.echo("  True RAGAS & RAGChecker integration")
+    typer.echo("  One API key for any provider")
 
 if __name__ == "__main__":
     app() 

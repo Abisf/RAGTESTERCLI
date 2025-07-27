@@ -24,7 +24,7 @@ class RagasFaithfulnessEvaluator(BaseEvaluator):
         self.api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
         
         if not self.api_key:
-            raise ValueError("API key not found. Set via --api-key flag.")
+            raise ValueError("API key not found. Set via --api-key flag or .env file.")
         
         # Configure RAGAS with unified LLM
         self.llm = ChatOpenAI(

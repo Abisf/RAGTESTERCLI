@@ -1,20 +1,21 @@
-# RAGTESTERCLI - MVP (v0.1)
+# RAGTESTERCLI
 
-A CLI tool for evaluating Retrieval-Augmented Generation (RAG) pipelines with plug-and-play metric testing and LLM-driven scoring.
+A unified CLI tool for evaluating Retrieval-Augmented Generation (RAG) pipelines with support for multiple LLM providers and evaluation metrics.
 
-## 🎯 Purpose
+## Purpose
 
-This MVP validates developer demand for a unified CLI wrapper that runs multiple types of RAG evaluation metrics from popular open-source tools like RAGAS and RAGChecker.
+This tool provides a unified interface for running RAG evaluation metrics from popular open-source tools like RAGAS and RAGChecker, with support for multiple LLM providers.
 
-## ✨ Features
+## Features
 
-- **Simple CLI Interface**: Typer-based command-line interface
+- **Unified CLI Interface**: Typer-based command-line interface
 - **Multiple Metrics**: Support for RAGAS and RAGChecker evaluations
-- **LLM-Powered**: Uses OpenAI GPT-4 for scoring (configurable)
+- **Multi-Provider LLM Support**: OpenAI, Anthropic, Google, OpenRouter, and more
+- **Environment Variable Support**: Secure API key management via .env files
 - **Flexible Output**: JSON and table formats
 - **Extensible Design**: Easy to add new metrics and providers
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -29,19 +30,24 @@ cd RAGTESTERCLI
 pip install -r requirements.txt
 ```
 
-3. Set up your OpenAI API key:
+3. Set up your API keys (optional - can also use CLI flags):
 ```bash
-export OPENAI_API_KEY="your-api-key-here"
+# Create .env file
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
 ### Basic Usage
 
 ```bash
-# Run faithfulness evaluation
-python cli.py test --input examples/test.json --metric faithfulness_ragas
+# Run faithfulness evaluation with OpenAI
+python cli.py test --input examples/test.json --metric faithfulness_ragas --llm-model gpt-4
 
-# Run hallucination detection  
-python cli.py test --input examples/test.json --metric hallucination_ragchecker
+# Run hallucination detection with OpenRouter
+python cli.py test --input examples/test.json --metric hallucination_ragchecker --llm-model anthropic/claude-3-haiku --api-base https://openrouter.ai/api/v1
+
+# Using environment variables (.env file)
+python cli.py test --input examples/test.json --metric faithfulness_ragas --llm-model gpt-3.5-turbo
 
 # Output as table format
 python cli.py test --input examples/test.json --metric faithfulness_ragas --output-format table
@@ -56,14 +62,14 @@ python cli.py test --input examples/test.json --metric faithfulness_ragas --outp
 python cli.py list-metrics
 ```
 
-## 📊 Supported Metrics
+## Supported Metrics
 
 | Tool | Metric | Description |
 |------|--------|-------------|
 | RAGAS | `faithfulness_ragas` | Measures if answer is grounded in context |
 | RAGChecker | `hallucination_ragchecker` | Detects hallucinated information |
 
-## 📋 Input Format
+## Input Format
 
 The tool expects a JSON file with the following structure:
 
@@ -82,7 +88,7 @@ Required fields:
 - `context`: Array of context strings or single string
 - `answer`: The answer to evaluate
 
-## 🔧 Configuration
+## Configuration
 
 Create a `ragtester.yaml` file for custom configuration:
 
