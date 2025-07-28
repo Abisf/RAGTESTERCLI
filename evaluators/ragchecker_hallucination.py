@@ -96,10 +96,12 @@ class RAGCheckerHallucinationEvaluator(BaseEvaluator):
             
             # Extract score from raw output
             raw_output = rag_results.to_dict()
+            print("✓ Using official RAGChecker hallucination implementation")
             return self._extract_hallucination_score(raw_output)
         
         except Exception as e:
             print(f"Error evaluating with RAGChecker hallucination: {str(e)}")
+            print("→ Using fallback (returning 0.0)")
             return 0.0
     
     def _extract_hallucination_score(self, result: Dict[str, Any]) -> float:

@@ -52,7 +52,17 @@ class RagasContextPrecisionEvaluator(BaseEvaluator):
         """Get appropriate LangChain LLM based on model name."""
         model_lower = self.model.lower()
         
-        if "claude" in model_lower or "anthropic" in model_lower:
+        # Check if we're using OpenRouter (which provides OpenAI-compatible API for all models)
+        if "openrouter.ai" in self.api_base:
+            # For OpenRouter, always use ChatOpenAI regardless of model type
+            return ChatOpenAI(
+                model_name=self.model,
+                openai_api_key=self.api_key,
+                openai_api_base=self.api_base,
+                temperature=0
+            )
+        elif "claude" in model_lower or "anthropic" in model_lower:
+            # Direct Anthropic API (not via OpenRouter)
             anthropic_key = os.getenv("ANTHROPIC_API_KEY", self.api_key)
             return ChatAnthropic(
                 model=self.model.replace("anthropic/", ""),
@@ -60,6 +70,7 @@ class RagasContextPrecisionEvaluator(BaseEvaluator):
                 temperature=0
             )
         elif "gemini" in model_lower or "google" in model_lower:
+            # Direct Google API (not via OpenRouter)
             google_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY", self.api_key)
             clean_model = self.model.replace("google/", "").replace("gemini-", "gemini-1.5-")
             if clean_model == "gemini-pro":
@@ -70,7 +81,7 @@ class RagasContextPrecisionEvaluator(BaseEvaluator):
                 temperature=0
             )
         else:
-            # Default to OpenAI-compatible (includes OpenRouter)
+            # Default to OpenAI-compatible (includes direct OpenAI)
             return ChatOpenAI(
                 model_name=self.model,
                 openai_api_key=self.api_key,
@@ -140,10 +151,12 @@ class RagasContextPrecisionEvaluator(BaseEvaluator):
                 asyncio.set_event_loop(loop)
             
             score = loop.run_until_complete(context_precision_metric.single_turn_ascore(sample))
+            print("✓ Using official RAGAS context precision implementation")
             return round(float(score), 3)
         
         except Exception as e:
             print(f"Error evaluating with RAGAS context precision: {str(e)}")
+            print("→ Using fallback manual implementation")
             # Fallback to manual precision evaluation
             return self._fallback_evaluation(question, context, answer)
     

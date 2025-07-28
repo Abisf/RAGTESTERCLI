@@ -99,10 +99,12 @@ class RagasFaithfulnessEvaluator(BaseEvaluator):
             
             # Extract score from result
             score = float(result.to_pandas()['faithfulness'].iloc[0])
+            print("✓ Using official RAGAS faithfulness implementation")
             return round(score, 3)
         
         except Exception as e:
             print(f"Error evaluating with RAGAS faithfulness: {str(e)}")
+            print("→ Using fallback manual implementation")
             # Fallback to manual claim-based evaluation
             return self._fallback_evaluation(question, context, answer)
     
