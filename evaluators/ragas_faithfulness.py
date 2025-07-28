@@ -1,6 +1,6 @@
 """
 RAGAS Faithfulness Evaluator
-Pure wrapper around official RAGAS library with multi-provider support
+Implements claim-based faithfulness scoring following official RAGAS methodology
 """
 
 import os
@@ -13,7 +13,14 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from .base_evaluator import BaseEvaluator
 
 class RagasFaithfulnessEvaluator(BaseEvaluator):
-    """Evaluate faithfulness using RAGAS library with unified LLM configuration."""
+    """
+    Evaluate faithfulness using RAGAS library with claim-based scoring.
+    
+    Follows the official RAGAS process:
+    1. Extract discrete claims from the generated answer
+    2. Verify each claim against the retrieved context
+    3. Compute ratio: supported_claims / total_claims
+    """
     
     def __init__(self, model_config: Optional[Dict[str, Any]] = None):
         super().__init__(model_config)
@@ -26,11 +33,12 @@ class RagasFaithfulnessEvaluator(BaseEvaluator):
         if not self.api_key:
             raise ValueError("API key not found. Set via --api-key flag or .env file.")
         
-        # Configure RAGAS with unified LLM
+        # Configure RAGAS LLM for claim extraction and verification
         self.llm = ChatOpenAI(
             model_name=self.model,
             openai_api_key=self.api_key,
-            openai_api_base=self.api_base
+            openai_api_base=self.api_base,
+            temperature=0  # Deterministic for evaluation
         )
         
         self.embeddings = OpenAIEmbeddings(
@@ -45,26 +53,35 @@ class RagasFaithfulnessEvaluator(BaseEvaluator):
         )
     
     def evaluate(self, data: Dict[str, Any]) -> float:
-        """Evaluate faithfulness using RAGAS library."""
+        """
+        Evaluate faithfulness using official RAGAS claim-based process.
+        
+        Process:
+        1. Break generated answer into discrete claims
+        2. Verify each claim against retrieved context  
+        3. Return ratio: supported_claims / total_claims
+        
+        Uses official RAGAS library which implements this methodology internally.
+        """
         question = data.get('question', '')
         context = data.get('context', [])
         answer = data.get('answer', '')
         
-        # Ensure context is a list
+        # Ensure context is a list of strings
         if isinstance(context, str):
             context = [context]
         elif not isinstance(context, list):
             context = [str(context)]
         
-        # Create dataset for RAGAS
-        dataset = Dataset.from_dict({
-            "question": [question],
-            "contexts": [context],
-            "answer": [answer],
-        })
-        
         try:
-            # Configure RAGAS with our unified LLM
+            # Create dataset for RAGAS evaluation
+            dataset = Dataset.from_dict({
+                "question": [question],
+                "contexts": [context],
+                "answer": [answer],
+            })
+            
+            # Configure RAGAS with our LLM
             from ragas.llms import LangchainLLMWrapper
             from ragas.embeddings import LangchainEmbeddingsWrapper
             
@@ -76,7 +93,8 @@ class RagasFaithfulnessEvaluator(BaseEvaluator):
                 dataset,
                 llm=llm_wrapper,
                 embeddings=emb_wrapper,
-                metrics=[faithfulness]
+                metrics=[faithfulness],
+                run_config=self.run_config
             )
             
             # Extract score from result
@@ -85,28 +103,139 @@ class RagasFaithfulnessEvaluator(BaseEvaluator):
         
         except Exception as e:
             print(f"Error evaluating with RAGAS faithfulness: {str(e)}")
-            # Fallback to custom evaluation
+            # Fallback to manual claim-based evaluation
             return self._fallback_evaluation(question, context, answer)
     
     def _fallback_evaluation(self, question: str, context: list, answer: str) -> float:
-        """Fallback evaluation using direct LLM call."""
+        """
+        Fallback evaluation using simplified claim-based approach.
+        
+        When RAGAS fails, manually implement the core faithfulness logic:
+        1. Extract claims from answer
+        2. Check each claim against context
+        3. Return supported_claims / total_claims
+        """
         from llm_client import LLMClient
         
         try:
             client = LLMClient()
             context_text = "\n".join(context) if isinstance(context, list) else str(context)
             
-            prompt = f"""
-Rate the faithfulness of this answer to the given context on a scale of 0.0 to 1.0:
-
-Context: {context_text}
-
-Question: {question}
+            # Step 1: Extract claims from answer
+            claims_prompt = f"""
+Break the following answer into individual factual claims. List each claim on a new line:
 
 Answer: {answer}
 
-Score (0.0 = completely unfaithful, 1.0 = completely faithful):"""
+Claims:"""
+            
+            claims_response = client.generate_response(claims_prompt)
+            claims = [claim.strip() for claim in claims_response.split('\n') if claim.strip()]
+            
+            if not claims:
+                return 0.0
+            
+            # Step 2: Verify each claim against context
+            supported_claims = 0
+            for claim in claims:
+                verification_prompt = f"""
+Can the following claim be supported by the given context? Answer only 'YES' or 'NO'.
 
-            return client.generate_score(prompt, score_range=(0.0, 1.0))
-        except Exception:
-            return 0.5 
+Context: {context_text}
+
+Claim: {claim}
+
+Answer:"""
+                
+                verification_response = client.generate_response(verification_prompt).strip().upper()
+                if verification_response.startswith('YES'):
+                    supported_claims += 1
+            
+            # Step 3: Calculate faithfulness score
+            faithfulness_score = supported_claims / len(claims)
+            return round(faithfulness_score, 3)
+            
+        except Exception as e:
+            print(f"Fallback evaluation failed: {e}")
+            return 0.5
+    
+    def get_detailed_analysis(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get detailed claim-by-claim analysis for transparency.
+        
+        Returns:
+        - extracted_claims: List of claims found in the answer
+        - claim_verification: Each claim with support status
+        - faithfulness_score: Final calculated score
+        """
+        from llm_client import LLMClient
+        
+        question = data.get('question', '')
+        context = data.get('context', [])
+        answer = data.get('answer', '')
+        
+        if isinstance(context, str):
+            context = [context]
+        elif not isinstance(context, list):
+            context = [str(context)]
+        
+        try:
+            client = LLMClient()
+            context_text = "\n".join(context)
+            
+            # Extract claims
+            claims_prompt = f"""
+Break the following answer into individual factual claims. List each claim on a new line:
+
+Answer: {answer}
+
+Claims:"""
+            
+            claims_response = client.generate_response(claims_prompt)
+            claims = [claim.strip() for claim in claims_response.split('\n') if claim.strip()]
+            
+            # Verify each claim
+            claim_analysis = []
+            supported_claims = 0
+            
+            for i, claim in enumerate(claims, 1):
+                verification_prompt = f"""
+Can the following claim be supported by the given context? Answer only 'YES' or 'NO'.
+
+Context: {context_text}
+
+Claim: {claim}
+
+Answer:"""
+                
+                verification_response = client.generate_response(verification_prompt).strip().upper()
+                is_supported = verification_response.startswith('YES')
+                
+                if is_supported:
+                    supported_claims += 1
+                
+                claim_analysis.append({
+                    "claim_number": i,
+                    "claim_text": claim,
+                    "supported": is_supported,
+                    "verification_response": verification_response
+                })
+            
+            faithfulness_score = supported_claims / len(claims) if claims else 0.0
+            
+            return {
+                "question": question,
+                "answer": answer,
+                "context": context,
+                "extracted_claims": claims,
+                "claim_analysis": claim_analysis,
+                "supported_claims": supported_claims,
+                "total_claims": len(claims),
+                "faithfulness_score": round(faithfulness_score, 3)
+            }
+            
+        except Exception as e:
+            return {
+                "error": f"Analysis failed: {e}",
+                "faithfulness_score": 0.5
+            } 

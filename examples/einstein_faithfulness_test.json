@@ -1,0 +1,24 @@
+[
+  {
+    "question": "Where and when was Einstein born?",
+    "context": [
+      "Albert Einstein (born 14 March 1879) was a German-born theoretical physicist who is widely held to be one of the greatest and most influential scientists of all time."
+    ],
+    "answer": "Einstein was born in Germany on 14 March 1879."
+  },
+  {
+    "question": "Where and when was Einstein born?",
+    "context": [
+      "Albert Einstein (born 14 March 1879) was a German-born theoretical physicist who is widely held to be one of the greatest and most influential scientists of all time."
+    ],
+    "answer": "Einstein was born in Germany on 20 March 1879."
+  },
+  {
+    "question": "What is the battery life of Model X?",
+    "context": [
+      "Model X battery lasts up to 10 hours.",
+      "Weight of Model X is 1.2 kg."
+    ],
+    "answer": "Model X has a battery life of 12 hours and weighs 1.2 kg."
+  }
+] 

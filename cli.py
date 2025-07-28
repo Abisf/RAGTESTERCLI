@@ -139,6 +139,88 @@ def test(
         typer.echo(result)
 
 @app.command()
+def analyze(
+    input: str = typer.Option(..., "--input", "-i", help="Path to input JSON file"),
+    llm_model: str = typer.Option("gpt-3.5-turbo", "--llm-model", help="Model name for analysis"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", help="API key for your chosen provider (or use .env)"),
+    api_base: Optional[str] = typer.Option(None, "--api-base", help="(Optional) Custom API base URL (or use .env)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+):
+    """
+    Analyze faithfulness with detailed claim-by-claim breakdown.
+    
+    Shows exactly how RAGAS calculates faithfulness:
+    1. Extract discrete claims from answers
+    2. Verify each claim against context
+    3. Compute ratio: supported_claims / total_claims
+    """
+    
+    # Setup API keys (same logic as test command)
+    if api_key:
+        key_var = detect_provider(llm_model)
+        os.environ[key_var] = api_key
+        os.environ["OPENAI_API_KEY"] = api_key
+    else:
+        key_var = detect_provider(llm_model)
+        env_api_key = os.getenv(key_var)
+        if not env_api_key:
+            typer.echo(f"Error: No API key found. Set {key_var} in .env file or use --api-key")
+            raise typer.Exit(1)
+        api_key = env_api_key
+    
+    clean_model = clean_model_name(llm_model, api_base)
+    os.environ["RAGCLI_LLM_MODEL"] = clean_model
+    
+    if api_base:
+        os.environ["OPENAI_API_BASE"] = api_base
+    
+    if api_base and "openrouter.ai" in api_base and api_key.startswith("sk-or-v1-"):
+        os.environ["LITELLM_API_KEY"] = api_key
+        os.environ["LITELLM_API_BASE"] = api_base
+        os.environ["OPENROUTER_API_KEY"] = api_key
+        print(f"Set LiteLLM vars for OpenRouter")
+    
+    # Load input data
+    from runner import load_input_data
+    data_list = load_input_data(input)
+    
+    # Initialize evaluator
+    from evaluators.ragas_faithfulness import RagasFaithfulnessEvaluator
+    evaluator = RagasFaithfulnessEvaluator()
+    
+    typer.echo("RAGAS Faithfulness - Detailed Claim Analysis")
+    typer.echo("=" * 50)
+    
+    for i, data in enumerate(data_list, 1):
+        typer.echo(f"\nTest Case {i}:")
+        typer.echo("-" * 30)
+        
+        analysis = evaluator.get_detailed_analysis(data)
+        
+        typer.echo(f"Question: {data.get('question', '')}")
+        typer.echo(f"Context: {' '.join(data.get('context', []))}")
+        typer.echo(f"Answer: {data.get('answer', '')}")
+        typer.echo()
+        
+        if "error" in analysis:
+            typer.echo(f"Error: {analysis['error']}")
+            continue
+        
+        typer.echo("Claim Analysis:")
+        for claim_data in analysis['claim_analysis']:
+            status = "✓ SUPPORTED" if claim_data['supported'] else "✗ NOT SUPPORTED"
+            typer.echo(f"  Claim {claim_data['claim_number']}: {claim_data['claim_text']}")
+            typer.echo(f"    Status: {status}")
+        
+        typer.echo()
+        typer.echo(f"Summary:")
+        typer.echo(f"  Total Claims: {analysis['total_claims']}")
+        typer.echo(f"  Supported Claims: {analysis['supported_claims']}")
+        typer.echo(f"  Faithfulness Score: {analysis['faithfulness_score']}")
+        typer.echo(f"  Formula: {analysis['supported_claims']}/{analysis['total_claims']} = {analysis['faithfulness_score']}")
+        typer.echo()
+
+@app.command()
 def list_metrics():
     """List available evaluation metrics."""
     from evaluators import get_available_metrics
