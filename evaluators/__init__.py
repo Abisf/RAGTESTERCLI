@@ -7,17 +7,20 @@ Manages available evaluators and provides factory function.
 from typing import Dict, Type, Optional, Any
 from .base_evaluator import BaseEvaluator
 from .ragas_faithfulness import RagasFaithfulnessEvaluator
+from .ragas_context_precision import RagasContextPrecisionEvaluator
 from .ragchecker_hallucination import RAGCheckerHallucinationEvaluator
 
 # Registry of available evaluators
 EVALUATORS: Dict[str, Type[BaseEvaluator]] = {
     "faithfulness_ragas": RagasFaithfulnessEvaluator,
+    "context_precision_ragas": RagasContextPrecisionEvaluator,
     "hallucination_ragchecker": RAGCheckerHallucinationEvaluator,
 }
 
 # Descriptions for each evaluator
 EVALUATOR_DESCRIPTIONS: Dict[str, str] = {
     "faithfulness_ragas": "RAGAS faithfulness metric - measures how faithful the answer is to the given context",
+    "context_precision_ragas": "RAGAS context precision metric - measures proportion of relevant chunks in retrieved contexts",
     "hallucination_ragchecker": "RAGChecker hallucination metric - detects hallucinations in generated responses",
 }
 

@@ -1,0 +1,10 @@
+[
+  {
+    "question": "What time does the Louvre open on weekends?",
+    "context": [
+      "The Louvre Museum is open 9 AM–6 PM on Saturday and Sunday.",
+      "The Eiffel Tower offers a spectacular view of Paris."
+    ],
+    "answer": "The Louvre opens at 9 AM on Saturday and Sunday."
+  }
+] 

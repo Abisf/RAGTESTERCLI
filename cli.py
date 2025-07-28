@@ -141,18 +141,17 @@ def test(
 @app.command()
 def analyze(
     input: str = typer.Option(..., "--input", "-i", help="Path to input JSON file"),
+    metric: str = typer.Option("faithfulness", "--metric", "-m", help="Analysis type: faithfulness or context_precision"),
     llm_model: str = typer.Option("gpt-3.5-turbo", "--llm-model", help="Model name for analysis"),
     api_key: Optional[str] = typer.Option(None, "--api-key", help="API key for your chosen provider (or use .env)"),
     api_base: Optional[str] = typer.Option(None, "--api-base", help="(Optional) Custom API base URL (or use .env)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
 ):
     """
-    Analyze faithfulness with detailed claim-by-claim breakdown.
+    Analyze RAG metrics with detailed breakdowns.
     
-    Shows exactly how RAGAS calculates faithfulness:
-    1. Extract discrete claims from answers
-    2. Verify each claim against context
-    3. Compute ratio: supported_claims / total_claims
+    Faithfulness: Shows claim-by-claim analysis
+    Context Precision: Shows chunk-by-chunk relevance analysis with Precision@k
     """
     
     # Setup API keys (same logic as test command)
@@ -184,41 +183,87 @@ def analyze(
     from runner import load_input_data
     data_list = load_input_data(input)
     
-    # Initialize evaluator
-    from evaluators.ragas_faithfulness import RagasFaithfulnessEvaluator
-    evaluator = RagasFaithfulnessEvaluator()
+    # Initialize appropriate evaluator based on metric
+    if metric == "faithfulness":
+        from evaluators.ragas_faithfulness import RagasFaithfulnessEvaluator
+        evaluator = RagasFaithfulnessEvaluator()
+        typer.echo("RAGAS Faithfulness - Detailed Claim Analysis")
+        typer.echo("=" * 50)
+        
+        for i, data in enumerate(data_list, 1):
+            typer.echo(f"\nTest Case {i}:")
+            typer.echo("-" * 30)
+            
+            analysis = evaluator.get_detailed_analysis(data)
+            
+            typer.echo(f"Question: {data.get('question', '')}")
+            typer.echo(f"Context: {' '.join(data.get('context', []))}")
+            typer.echo(f"Answer: {data.get('answer', '')}")
+            typer.echo()
+            
+            if "error" in analysis:
+                typer.echo(f"Error: {analysis['error']}")
+                continue
+            
+            typer.echo("Claim Analysis:")
+            for claim_data in analysis['claim_analysis']:
+                status = "✓ SUPPORTED" if claim_data['supported'] else "✗ NOT SUPPORTED"
+                typer.echo(f"  Claim {claim_data['claim_number']}: {claim_data['claim_text']}")
+                typer.echo(f"    Status: {status}")
+            
+            typer.echo()
+            typer.echo(f"Summary:")
+            typer.echo(f"  Total Claims: {analysis['total_claims']}")
+            typer.echo(f"  Supported Claims: {analysis['supported_claims']}")
+            typer.echo(f"  Faithfulness Score: {analysis['faithfulness_score']}")
+            typer.echo(f"  Formula: {analysis['supported_claims']}/{analysis['total_claims']} = {analysis['faithfulness_score']}")
+            typer.echo()
     
-    typer.echo("RAGAS Faithfulness - Detailed Claim Analysis")
-    typer.echo("=" * 50)
+    elif metric == "context_precision":
+        from evaluators.ragas_context_precision import RagasContextPrecisionEvaluator
+        evaluator = RagasContextPrecisionEvaluator()
+        typer.echo("RAGAS Context Precision - Detailed Chunk Analysis")
+        typer.echo("=" * 50)
+        
+        for i, data in enumerate(data_list, 1):
+            typer.echo(f"\nTest Case {i}:")
+            typer.echo("-" * 30)
+            
+            analysis = evaluator.get_detailed_analysis(data)
+            
+            typer.echo(f"Question: {data.get('question', '')}")
+            typer.echo(f"Answer: {data.get('answer', '')}")
+            typer.echo(f"Retrieved Contexts ({analysis.get('total_chunks', 0)} chunks):")
+            for j, context in enumerate(data.get('context', []), 1):
+                typer.echo(f"  [{j}] {context}")
+            typer.echo()
+            
+            if "error" in analysis:
+                typer.echo(f"Error: {analysis['error']}")
+                continue
+            
+            typer.echo("Chunk Relevance Analysis:")
+            for chunk_data in analysis['chunk_analysis']:
+                status = "✓ RELEVANT" if chunk_data['relevant'] else "✗ NOT RELEVANT"
+                typer.echo(f"  Chunk {chunk_data['chunk_number']}: {status}")
+                typer.echo(f"    Text: {chunk_data['chunk_text']}")
+            
+            typer.echo()
+            typer.echo("Precision@k Calculation:")
+            for precision_data in analysis['precision_at_k']:
+                typer.echo(f"  Precision@{precision_data['position']}: {precision_data['true_positives']}/{precision_data['total_chunks']} = {precision_data['precision']}")
+            
+            typer.echo()
+            typer.echo(f"Summary:")
+            typer.echo(f"  Total Chunks: {analysis['total_chunks']}")
+            typer.echo(f"  Relevant Chunks: {analysis['relevant_chunks']}")
+            typer.echo(f"  Mean Precision: {analysis['mean_precision']}")
+            typer.echo(f"  Formula: Mean of Precision@k values = {analysis['mean_precision']}")
+            typer.echo()
     
-    for i, data in enumerate(data_list, 1):
-        typer.echo(f"\nTest Case {i}:")
-        typer.echo("-" * 30)
-        
-        analysis = evaluator.get_detailed_analysis(data)
-        
-        typer.echo(f"Question: {data.get('question', '')}")
-        typer.echo(f"Context: {' '.join(data.get('context', []))}")
-        typer.echo(f"Answer: {data.get('answer', '')}")
-        typer.echo()
-        
-        if "error" in analysis:
-            typer.echo(f"Error: {analysis['error']}")
-            continue
-        
-        typer.echo("Claim Analysis:")
-        for claim_data in analysis['claim_analysis']:
-            status = "✓ SUPPORTED" if claim_data['supported'] else "✗ NOT SUPPORTED"
-            typer.echo(f"  Claim {claim_data['claim_number']}: {claim_data['claim_text']}")
-            typer.echo(f"    Status: {status}")
-        
-        typer.echo()
-        typer.echo(f"Summary:")
-        typer.echo(f"  Total Claims: {analysis['total_claims']}")
-        typer.echo(f"  Supported Claims: {analysis['supported_claims']}")
-        typer.echo(f"  Faithfulness Score: {analysis['faithfulness_score']}")
-        typer.echo(f"  Formula: {analysis['supported_claims']}/{analysis['total_claims']} = {analysis['faithfulness_score']}")
-        typer.echo()
+    else:
+        typer.echo(f"Error: Unknown metric '{metric}'. Available: faithfulness, context_precision")
+        raise typer.Exit(1)
 
 @app.command()
 def list_metrics():

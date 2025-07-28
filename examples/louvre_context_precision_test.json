@@ -1,0 +1,31 @@
+[
+  {
+    "question": "What time does the Louvre open on weekends?",
+    "context": [
+      "The Louvre Museum is open 9 AM–6 PM on Saturday and Sunday.",
+      "The Louvre is located in Paris, France.",
+      "The Eiffel Tower offers a spectacular view of Paris."
+    ],
+    "answer": "The Louvre opens at 9 AM on Saturday and Sunday."
+  },
+  {
+    "question": "Where is the Eiffel Tower located?",
+    "context": [
+      "The Eiffel Tower is located in Paris.",
+      "Paris is the capital of France.",
+      "The Louvre Museum is also in Paris."
+    ],
+    "answer": "The Eiffel Tower is located in Paris."
+  },
+  {
+    "question": "How tall is the Empire State Building?",
+    "context": [
+      "The Empire State Building is 381 meters tall to its roof.",
+      "The Empire State Building has 102 floors.",
+      "New York City has many skyscrapers.",
+      "The building was completed in 1931.",
+      "Tourism is important to New York's economy."
+    ],
+    "answer": "The Empire State Building is 381 meters tall."
+  }
+] 

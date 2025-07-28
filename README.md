@@ -50,7 +50,10 @@ python cli.py test --input examples/test.json --metric hallucination_ragchecker 
 python cli.py test --input examples/test.json --metric faithfulness_ragas --llm-model gpt-3.5-turbo
 
 # Detailed claim-by-claim analysis (shows exactly how faithfulness is calculated)
-python cli.py analyze --input examples/einstein_faithfulness_test.json --llm-model gpt-3.5-turbo
+python cli.py analyze --input examples/einstein_faithfulness_test.json --metric faithfulness --llm-model gpt-3.5-turbo
+
+# Context precision analysis (shows chunk-by-chunk relevance with Precision@k)
+python cli.py analyze --input examples/louvre_context_precision_test.json --metric context_precision --llm-model gpt-3.5-turbo
 
 # Output as table format
 python cli.py test --input examples/test.json --metric faithfulness_ragas --output-format table
@@ -70,6 +73,7 @@ python cli.py list-metrics
 | Tool | Metric | Description |
 |------|--------|-------------|
 | RAGAS | `faithfulness_ragas` | Measures if answer is grounded in context |
+| RAGAS | `context_precision_ragas` | Measures proportion of relevant chunks in retrieved contexts |
 | RAGChecker | `hallucination_ragchecker` | Detects hallucinated information |
 
 ## Input Format
