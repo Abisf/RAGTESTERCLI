@@ -141,7 +141,7 @@ def test(
 @app.command()
 def analyze(
     input: str = typer.Option(..., "--input", "-i", help="Path to input JSON file"),
-    metric: str = typer.Option("faithfulness", "--metric", "-m", help="Analysis type: faithfulness or context_precision"),
+    metric: str = typer.Option("faithfulness", "--metric", "-m", help="Analysis type: faithfulness, context_precision, or hallucination"),
     llm_model: str = typer.Option("gpt-3.5-turbo", "--llm-model", help="Model name for analysis"),
     api_key: Optional[str] = typer.Option(None, "--api-key", help="API key for your chosen provider (or use .env)"),
     api_base: Optional[str] = typer.Option(None, "--api-base", help="(Optional) Custom API base URL (or use .env)"),
@@ -152,6 +152,7 @@ def analyze(
     
     Faithfulness: Shows claim-by-claim analysis
     Context Precision: Shows chunk-by-chunk relevance analysis with Precision@k
+    Hallucination: Shows detailed hallucination detection analysis
     """
     
     # Setup API keys (same logic as test command)
@@ -261,8 +262,47 @@ def analyze(
             typer.echo(f"  Formula: Mean of Precision@k values = {analysis['mean_precision']}")
             typer.echo()
     
+    elif metric == "hallucination":
+        from evaluators.ragchecker_hallucination import RAGCheckerHallucinationEvaluator
+        evaluator = RAGCheckerHallucinationEvaluator()
+        typer.echo("RAGChecker Hallucination - Detailed Analysis")
+        typer.echo("=" * 50)
+        
+        for i, data in enumerate(data_list, 1):
+            typer.echo(f"\nTest Case {i}:")
+            typer.echo("-" * 30)
+            
+            analysis = evaluator.get_detailed_analysis(data)
+            
+            typer.echo(f"Question: {data.get('question', '')}")
+            typer.echo(f"Answer: {data.get('answer', '')}")
+            typer.echo(f"Context: {' '.join(data.get('context', []))}")
+            typer.echo()
+            
+            if "error" in analysis:
+                typer.echo(f"Error: {analysis['error']}")
+                continue
+            
+            typer.echo("Hallucination Analysis:")
+            typer.echo(f"  Score: {analysis['hallucination_score']}% hallucination detected")
+            typer.echo(f"  Interpretation: {analysis['interpretation']}")
+            typer.echo()
+            
+            typer.echo("Analysis Breakdown:")
+            breakdown = analysis['analysis_breakdown']
+            typer.echo(f"  Response Length: {breakdown.get('response_length', 0)} characters")
+            typer.echo(f"  Context Count: {breakdown.get('context_count', 0)} chunks")
+            typer.echo(f"  Metrics Analyzed: {', '.join(breakdown.get('metrics_analyzed', []))}")
+            
+            if 'generator_metrics' in breakdown:
+                gen_metrics = breakdown['generator_metrics']
+                typer.echo(f"  Generator Metrics:")
+                typer.echo(f"    Hallucination Score: {gen_metrics.get('hallucination', 0.0)}%")
+            
+            typer.echo()
+    
     else:
-        typer.echo(f"Error: Unknown metric '{metric}'. Available: faithfulness, context_precision")
+        typer.echo(f"Error: Unknown metric '{metric}'. Available: faithfulness, context_precision, hallucination")
         raise typer.Exit(1)
 
 @app.command()

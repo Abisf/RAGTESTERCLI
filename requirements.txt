@@ -8,6 +8,7 @@ datasets
 langchain-openai
 ragchecker>=0.1.9
 python-dotenv          # Environment variable support
+pytest                  # Testing framework
 # Multi-provider LLM support
 langchain-google-genai  # Google Gemini
 langchain-anthropic     # Anthropic Claude  

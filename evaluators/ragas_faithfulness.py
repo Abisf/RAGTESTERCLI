@@ -132,7 +132,33 @@ Answer: {answer}
 Claims:"""
             
             claims_response = client.generate_response(claims_prompt)
-            claims = [claim.strip() for claim in claims_response.split('\n') if claim.strip()]
+            # Filter out instruction text and only keep actual claims
+            raw_lines = [line.strip() for line in claims_response.split('\n') if line.strip()]
+            claims = []
+            for line in raw_lines:
+                # Skip common instruction/header lines
+                if any(phrase in line.lower() for phrase in [
+                    'here are the individual factual claims',
+                    'individual factual claims from',
+                    'factual claims:',
+                    'claims:'
+                ]):
+                    continue
+                # Skip lines that look like numbered headers (just numbers and periods)
+                if line.strip().endswith(':') and len(line.strip()) < 20:
+                    continue
+                
+                # Clean up the claim text - remove numbering
+                clean_claim = line.strip()
+                # Remove common numbering patterns: "1.", "1)", "(1)", "- ", "• "
+                import re
+                clean_claim = re.sub(r'^\s*[\d]+[\.\)]\s*', '', clean_claim)  # "1. " or "1) "
+                clean_claim = re.sub(r'^\s*\([\d]+\)\s*', '', clean_claim)   # "(1) "
+                clean_claim = re.sub(r'^\s*[-•]\s*', '', clean_claim)        # "- " or "• "
+                clean_claim = clean_claim.strip()
+                
+                if clean_claim:  # Only add non-empty claims
+                    claims.append(clean_claim)
             
             if not claims:
                 return 0.0
@@ -194,7 +220,33 @@ Answer: {answer}
 Claims:"""
             
             claims_response = client.generate_response(claims_prompt)
-            claims = [claim.strip() for claim in claims_response.split('\n') if claim.strip()]
+            # Filter out instruction text and only keep actual claims
+            raw_lines = [line.strip() for line in claims_response.split('\n') if line.strip()]
+            claims = []
+            for line in raw_lines:
+                # Skip common instruction/header lines
+                if any(phrase in line.lower() for phrase in [
+                    'here are the individual factual claims',
+                    'individual factual claims from',
+                    'factual claims:',
+                    'claims:'
+                ]):
+                    continue
+                # Skip lines that look like numbered headers (just numbers and periods)
+                if line.strip().endswith(':') and len(line.strip()) < 20:
+                    continue
+                
+                # Clean up the claim text - remove numbering
+                clean_claim = line.strip()
+                # Remove common numbering patterns: "1.", "1)", "(1)", "- ", "• "
+                import re
+                clean_claim = re.sub(r'^\s*[\d]+[\.\)]\s*', '', clean_claim)  # "1. " or "1) "
+                clean_claim = re.sub(r'^\s*\([\d]+\)\s*', '', clean_claim)   # "(1) "
+                clean_claim = re.sub(r'^\s*[-•]\s*', '', clean_claim)        # "- " or "• "
+                clean_claim = clean_claim.strip()
+                
+                if clean_claim:  # Only add non-empty claims
+                    claims.append(clean_claim)
             
             # Verify each claim
             claim_analysis = []

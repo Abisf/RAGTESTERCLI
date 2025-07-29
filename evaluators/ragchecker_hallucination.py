@@ -141,3 +141,91 @@ class RAGCheckerHallucinationEvaluator(BaseEvaluator):
         rag_results = RAGResults.from_dict(rag_data)
         self.checker.evaluate(rag_results, [hallucination])
         return rag_results.to_dict()
+    
+    def get_detailed_analysis(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get detailed hallucination analysis showing specific issues found.
+        
+        Returns:
+        - hallucination_score: Overall hallucination score (0-100)
+        - analysis_breakdown: Detailed breakdown of what was detected
+        - response_segments: Analysis of different parts of the response
+        """
+        try:
+            raw_output = self.get_raw_output(data)
+            
+            question = data.get('question', '')
+            context = data.get('context', [])
+            answer = data.get('answer', '')
+            
+            if isinstance(context, str):
+                context = [context]
+            
+            # Extract the detailed analysis from RAGChecker output
+            hallucination_score = self._extract_hallucination_score(raw_output)
+            
+            # Get detailed breakdown from RAGChecker results
+            detailed_breakdown = self._extract_detailed_breakdown(raw_output)
+            
+            return {
+                "question": question,
+                "answer": answer,
+                "retrieved_contexts": context,
+                "hallucination_score": hallucination_score,
+                "hallucination_percentage": hallucination_score,
+                "analysis_breakdown": detailed_breakdown,
+                "interpretation": self._interpret_score(hallucination_score),
+                "raw_ragchecker_output": raw_output
+            }
+            
+        except Exception as e:
+            return {
+                "error": f"Detailed analysis failed: {e}",
+                "hallucination_score": 0.0
+            }
+    
+    def _extract_detailed_breakdown(self, raw_output: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract detailed breakdown from RAGChecker output."""
+        try:
+            # Navigate to detailed metrics in RAGChecker output
+            results = raw_output.get("results", [])
+            if not results:
+                return {"error": "No results found in RAGChecker output"}
+            
+            result = results[0]  # First (and typically only) result
+            
+            # Extract various components analyzed by RAGChecker
+            breakdown = {
+                "query_id": result.get("query_id", "1"),
+                "response_length": len(result.get("response", "")),
+                "context_count": len(result.get("retrieved_context", [])),
+                "metrics_analyzed": []
+            }
+            
+            # Add metrics that were computed
+            if "metrics" in raw_output:
+                metrics = raw_output["metrics"]
+                if "generator_metrics" in metrics:
+                    gen_metrics = metrics["generator_metrics"]
+                    breakdown["generator_metrics"] = {
+                        "hallucination": gen_metrics.get("hallucination", 0.0)
+                    }
+                    breakdown["metrics_analyzed"].append("hallucination_detection")
+            
+            return breakdown
+            
+        except Exception as e:
+            return {"error": f"Could not extract breakdown: {e}"}
+    
+    def _interpret_score(self, score: float) -> str:
+        """Provide human-readable interpretation of hallucination score."""
+        if score == 0.0:
+            return "No hallucinations detected - response appears fully grounded in context"
+        elif score <= 25.0:
+            return "Low hallucination risk - response is mostly grounded with minor unsupported claims"
+        elif score <= 50.0:
+            return "Moderate hallucination risk - response contains some unsupported information"
+        elif score <= 75.0:
+            return "High hallucination risk - response contains significant unsupported claims"
+        else:
+            return "Very high hallucination risk - response is largely unsupported by context"
