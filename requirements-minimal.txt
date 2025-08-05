@@ -1,0 +1,37 @@
+# Minimal requirements for RAGTesterCLI (without heavy ML dependencies)
+# Note: RAGChecker hallucination detection will not work with this minimal install
+
+typer[all]
+openai>=1.0.0
+ragas>=0.1.0
+tabulate
+pyyaml
+pandas
+datasets
+langchain-openai
+python-dotenv
+pytest
+
+# Multi-provider LLM support (core only)
+langchain-google-genai
+langchain-anthropic
+google-generativeai
+anthropic
+
+# Core LangChain dependencies
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+nest-asyncio>=1.6.0
+diskcache>=5.6.3
+numpy>=1.26.0
+tiktoken>=0.9.0
+
+# HTTP and utilities
+aiohttp>=3.9.1
+httpx>=0.23.0
+jinja2>=3.1.2
+jsonschema>=4.22.0
+protobuf>=5.29.0
+google-api-core>=2.25.0
+google-auth>=2.15.0 

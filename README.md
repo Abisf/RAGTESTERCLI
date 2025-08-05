@@ -48,6 +48,23 @@ cd RAGTESTERCLI
 pip install -r requirements.txt
 ```
 
+**⚠️ Important Notes:**
+- **Heavy Dependencies**: RAGChecker includes PyTorch, transformers, spaCy (~2GB+ download)
+- **Installation Time**: First install may take 10-15 minutes due to ML dependencies
+- **System Requirements**: Requires 4GB+ RAM for full functionality
+
+**Installation Options:**
+```bash
+# Full installation (recommended)
+pip install -r requirements.txt
+
+# Minimal installation (no RAGChecker hallucination detection)
+pip install -r requirements-minimal.txt
+
+# Alternative: Install without heavy ML dependencies
+pip install --no-deps ragchecker  # Limited functionality
+```
+
 3. Set up your API keys (optional - can also use CLI flags):
 ```bash
 # Create .env file
