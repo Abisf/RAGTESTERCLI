@@ -30,10 +30,16 @@ class RagasContextPrecisionEvaluator(BaseEvaluator):
     def __init__(self, model_config: Optional[Dict[str, Any]] = None):
         super().__init__(model_config)
         
-        # Get configuration from environment variables set by CLI
-        self.model = os.getenv("RAGCLI_LLM_MODEL", "gpt-4")
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        self.api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+        # Get configuration from model_config (passed from CLI) or fallback to environment
+        if model_config:
+            self.model = model_config.get("llm_model", os.getenv("RAGCLI_LLM_MODEL", "gpt-4"))
+            self.api_key = model_config.get("api_key", os.getenv("OPENAI_API_KEY"))
+            self.api_base = model_config.get("api_base", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"))
+        else:
+            # Fallback to environment variables if no model_config provided
+            self.model = os.getenv("RAGCLI_LLM_MODEL", "gpt-4")
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            self.api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
         
         if not self.api_key:
             raise ValueError("API key not found. Set via --api-key flag or .env file.")
@@ -53,7 +59,7 @@ class RagasContextPrecisionEvaluator(BaseEvaluator):
         model_lower = self.model.lower()
         
         # Check if we're using OpenRouter (which provides OpenAI-compatible API for all models)
-        if "openrouter.ai" in self.api_base:
+        if self.api_base and "openrouter.ai" in self.api_base:
             # For OpenRouter, always use ChatOpenAI regardless of model type
             return ChatOpenAI(
                 model_name=self.model,
@@ -172,7 +178,8 @@ class RagasContextPrecisionEvaluator(BaseEvaluator):
         from llm_client import LLMClient
         
         try:
-            client = LLMClient()
+            # Pass model_config to LLMClient so it uses the correct API key and base
+            client = LLMClient(self.model_config)
             
             if not context:
                 return 0.0
@@ -250,7 +257,8 @@ Answer only 'YES' or 'NO':"""
             context = [str(context)]
         
         try:
-            client = LLMClient()
+            # Pass model_config to LLMClient so it uses the correct API key and base
+            client = LLMClient(self.model_config)
             
             # Judge relevance of each chunk
             chunk_analysis = []

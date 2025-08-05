@@ -18,7 +18,9 @@ app = typer.Typer()
 PROVIDER_MAP = {
     "gpt-": "OPENAI",
     "claude-": "ANTHROPIC",
+    "anthropic/": "ANTHROPIC",
     "gemini": "GOOGLE",
+    "google/": "GOOGLE",
     "mistral": "MISTRAL",
     "llama": "TOGETHER",
     "meta-llama": "TOGETHER",
@@ -39,8 +41,13 @@ def clean_model_name(model_name: str, api_base: Optional[str] = None) -> str:
     
     return model_name
 
-def detect_provider(model_name: str) -> str:
-    """Detect provider from model name and return env var name."""
+def detect_provider(model_name: str, api_base: Optional[str] = None) -> str:
+    """Detect provider from model name and API base, return env var name."""
+    # Special case: If using OpenRouter, always use OPENROUTER_API_KEY
+    if api_base and "openrouter.ai" in api_base:
+        return "OPENROUTER_API_KEY"
+    
+    # Otherwise, detect from model name
     for prefix, prov in PROVIDER_MAP.items():
         if model_name.lower().startswith(prefix):
             return prov + "_API_KEY"
@@ -78,12 +85,12 @@ def test(
     # 1) Get API key from CLI or environment
     if api_key:
         # Use CLI-provided API key
-        key_var = detect_provider(llm_model)
+        key_var = detect_provider(llm_model, api_base)
         os.environ[key_var] = api_key
         os.environ["OPENAI_API_KEY"] = api_key  # Mirror for RAGAS
     else:
         # Use environment variables from .env
-        key_var = detect_provider(llm_model)
+        key_var = detect_provider(llm_model, api_base)
         env_api_key = os.getenv(key_var)
         if not env_api_key:
             typer.echo(f"Error: No API key found. Set {key_var} in .env file or use --api-key")
@@ -126,17 +133,36 @@ def test(
         "api_base": api_base
     }
     
-    result = run_evaluation(
-        input_file=input,
-        metric=metric,
-        output_file=output,
-        output_format=format,
-        verbose=verbose,
-        model_config=model_config
-    )
-    
-    if result:
-        typer.echo(result)
+    try:
+        result = run_evaluation(
+            input_file=input,
+            metric=metric,
+            output_file=output,
+            output_format=format,
+            verbose=verbose,
+            model_config=model_config
+        )
+        
+        if result:
+            typer.echo(result)
+            
+    except Exception as e:
+        error_msg = str(e)
+        
+        # Check for quota/rate limit errors and show friendly message
+        if any(keyword in error_msg.lower() for keyword in ["quota", "rate limit", "insufficient_quota", "billing"]):
+            typer.echo(f"\nError: API quota exceeded")
+            typer.echo(f"Please check your billing and usage limits, or try again later.")
+            typer.echo(f"Details: {error_msg}")
+            raise typer.Exit(1)
+        elif "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower():
+            typer.echo(f"\nError: Authentication failed")
+            typer.echo(f"Please check your API key and try again.")
+            typer.echo(f"Details: {error_msg}")
+            raise typer.Exit(1)
+        else:
+            typer.echo(f"\nError: {error_msg}")
+            raise typer.Exit(1)
 
 @app.command()
 def analyze(
@@ -157,11 +183,11 @@ def analyze(
     
     # Setup API keys (same logic as test command)
     if api_key:
-        key_var = detect_provider(llm_model)
+        key_var = detect_provider(llm_model, api_base)
         os.environ[key_var] = api_key
         os.environ["OPENAI_API_KEY"] = api_key
     else:
-        key_var = detect_provider(llm_model)
+        key_var = detect_provider(llm_model, api_base)
         env_api_key = os.getenv(key_var)
         if not env_api_key:
             typer.echo(f"Error: No API key found. Set {key_var} in .env file or use --api-key")
@@ -184,10 +210,17 @@ def analyze(
     from runner import load_input_data
     data_list = load_input_data(input)
     
+    # Build model config for evaluator
+    model_config = {
+        "llm_model": llm_model,
+        "api_key": api_key,
+        "api_base": api_base
+    }
+    
     # Initialize appropriate evaluator based on metric
     if metric == "faithfulness":
         from evaluators.ragas_faithfulness import RagasFaithfulnessEvaluator
-        evaluator = RagasFaithfulnessEvaluator()
+        evaluator = RagasFaithfulnessEvaluator(model_config)
         typer.echo("RAGAS Faithfulness - Detailed Claim Analysis")
         typer.echo("=" * 50)
         
@@ -311,7 +344,7 @@ def analyze(
     
     elif metric == "context_precision":
         from evaluators.ragas_context_precision import RagasContextPrecisionEvaluator
-        evaluator = RagasContextPrecisionEvaluator()
+        evaluator = RagasContextPrecisionEvaluator(model_config)
         typer.echo("RAGAS Context Precision - Detailed Chunk Analysis")
         typer.echo("=" * 50)
         
@@ -354,23 +387,14 @@ def analyze(
                 typer.echo(f"  Noise Pattern: {quality.get('noise_pattern', 'unknown').replace('_', ' ').title()}")
                 typer.echo()
             
-            # Display diagnostic insights
+            # Display simplified diagnostic insights
             if 'diagnostic_insights' in analysis:
                 insights = analysis['diagnostic_insights']
-                typer.echo(f"Diagnostic Insights (Severity: {insights.get('severity', 'unknown').upper()}):")
-                if insights.get('primary_issues'):
-                    typer.echo("  Issues Found:")
-                    for issue in insights['primary_issues']:
-                        typer.echo(f"    • {issue}")
-                if insights.get('recommendations'):
-                    typer.echo("  Recommendations:")
-                    for rec in insights['recommendations']:
-                        typer.echo(f"    • {rec}")
-                if insights.get('specific_problems'):
-                    typer.echo("  Irrelevant Chunks:")
-                    for problem in insights['specific_problems']:
-                        typer.echo(f"    • Chunk {problem['chunk_number']}: {problem['chunk_text']}")
-                typer.echo()
+                severity = insights.get('severity', 'unknown').upper()
+                if severity in ['HIGH', 'CRITICAL']:
+                    typer.echo(f"⚠️  {severity} RISK: {insights.get('primary_issues', ['Hallucination detected'])[0]}")
+                elif severity == 'LOW':
+                    typer.echo("✅ Low risk - minor issues detected")
             
             # Display summary verdict prominently for casual users
             if 'summary_verdict' in analysis:
@@ -391,6 +415,40 @@ def analyze(
             typer.echo(f"  📊 RAGAS Context Precision: {ragas_precision}")
             typer.echo(f"      → Measures ranking quality: 'Did we rank relevant chunks early?'")
             typer.echo(f"      → Formula: Σ(Precision@k × v_k) / Σ(v_k)")
+            
+            # Show detailed calculation if precision_at_k is available
+            if 'precision_at_k' in analysis:
+                typer.echo()
+                typer.echo("Detailed RAGAS Calculation:")
+                precision_data = analysis['precision_at_k']
+                relevant_chunks = analysis.get('relevant_chunks', 0)
+                
+                # Show Precision@k calculations
+                typer.echo("  Precision@k Calculations:")
+                for p_data in precision_data:
+                    k = p_data['position']
+                    precision = p_data['precision']
+                    true_pos = p_data['true_positives']
+                    total = p_data['total_chunks']
+                    typer.echo(f"    Precision@{k}: {true_pos}/{total} = {precision}")
+                
+                # Show weighted calculation
+                typer.echo()
+                typer.echo("  Weighted Calculation (v_k = 1 for relevant chunks):")
+                weighted_sum = 0
+                for i, chunk in enumerate(analysis.get('chunk_analysis', [])):
+                    if chunk['relevant']:
+                        k = i + 1
+                        precision_k = precision_data[i]['precision']
+                        weighted_sum += precision_k
+                        typer.echo(f"    Position {k} (relevant): Precision@{k} × 1 = {precision_k}")
+                
+                if relevant_chunks > 0:
+                    final_score = weighted_sum / relevant_chunks
+                    typer.echo(f"    Final Score: {weighted_sum} / {relevant_chunks} = {final_score:.3f}")
+                else:
+                    typer.echo(f"    Final Score: 0 (no relevant chunks)")
+            
             typer.echo()
             typer.echo(f"  🔍 Simple Context Precision: {simple_precision}")
             typer.echo(f"      → Measures retrieval cleanliness: 'How much retrieved content is useful?'")
@@ -402,8 +460,11 @@ def analyze(
                 typer.echo()
                 typer.echo(f"Additional Metrics:")
                 typer.echo(f"  Noise Rate: {stats.get('noise_rate', 0.0):.1%}")
+                typer.echo(f"      → Percentage of irrelevant chunks in retrieval")
                 typer.echo(f"  Early Precision: {stats.get('early_precision', 0.0):.3f}")
+                typer.echo(f"      → Precision at first 2 positions (ranking quality)")
                 typer.echo(f"  Late Precision: {stats.get('late_precision', 0.0):.3f}")
+                typer.echo(f"      → Precision at last 2 positions (overall noise)")
             
             # Interpretive guidance based on both metrics
             typer.echo()
@@ -429,19 +490,60 @@ def analyze(
                 action_rec = analysis['action_recommendations']
                 typer.echo()
                 typer.echo("🎯 Action Recommendations:")
-                typer.echo(f"  Action: {action_rec.get('action', 'none')}")
+                
+                action = action_rec.get('action', 'none')
+                if action == 'maintain':
+                    typer.echo(f"  Action: ✅ Keep current retrieval system")
+                    typer.echo(f"      → Your retrieval is working well")
+                elif action == 'overhaul_retrieval':
+                    typer.echo(f"  Action: 🔧 Fix both ranking and noise issues")
+                    typer.echo(f"      → Improve similarity matching and ranking algorithms")
+                elif action == 'improve_ranking':
+                    typer.echo(f"  Action: 📈 Improve ranking algorithm")
+                    typer.echo(f"      → Focus on putting most relevant chunks first")
+                elif action == 'reduce_noise':
+                    typer.echo(f"  Action: 🧹 Clean up retrieval noise")
+                    typer.echo(f"      → Filter out irrelevant content")
+                else:
+                    typer.echo(f"  Action: {action}")
+                
                 if action_rec.get('target_ranks'):
-                    typer.echo(f"  Target Ranks: {action_rec['target_ranks']}")
+                    ranks = action_rec['target_ranks']
+                    typer.echo(f"  Focus Positions: {ranks}")
+                    typer.echo(f"      → These positions need improvement")
+                
                 if action_rec.get('keep_ranks'):
-                    typer.echo(f"  Keep Ranks: {action_rec['keep_ranks']}")
-                typer.echo(f"  Reason: {action_rec.get('reason', 'unknown')}")
-                typer.echo(f"  Confidence: {action_rec.get('confidence', 'unknown')}")
+                    ranks = action_rec['keep_ranks']
+                    typer.echo(f"  Keep Positions: {ranks}")
+                    typer.echo(f"      → These positions are working well")
+                
+                reason = action_rec.get('reason', 'unknown')
+                if reason == 'good_performance':
+                    typer.echo(f"  Reason: ✅ Good overall performance")
+                elif reason == 'poor_ranking_and_high_noise':
+                    typer.echo(f"  Reason: ❌ Poor ranking AND high noise")
+                elif reason == 'good_ranking_high_noise':
+                    typer.echo(f"  Reason: ⚠️ Good ranking but high noise")
+                elif reason == 'poor_ranking_low_noise':
+                    typer.echo(f"  Reason: ⚠️ Poor ranking but low noise")
+                else:
+                    typer.echo(f"  Reason: {reason}")
+                
+                confidence = action_rec.get('confidence', 'unknown')
+                if confidence == 'high':
+                    typer.echo(f"  Confidence: 🔴 High confidence in recommendation")
+                elif confidence == 'medium':
+                    typer.echo(f"  Confidence: 🟡 Medium confidence in recommendation")
+                elif confidence == 'low':
+                    typer.echo(f"  Confidence: 🟢 Low confidence in recommendation")
+                else:
+                    typer.echo(f"  Confidence: {confidence}")
             
             typer.echo()
     
     elif metric == "hallucination":
         from evaluators.ragchecker_hallucination import RAGCheckerHallucinationEvaluator
-        evaluator = RAGCheckerHallucinationEvaluator()
+        evaluator = RAGCheckerHallucinationEvaluator(model_config)
         typer.echo("RAGChecker Hallucination - Detailed Analysis")
         typer.echo("=" * 50)
         
@@ -462,21 +564,17 @@ def analyze(
                 typer.echo(f"Error: {analysis['error']}")
                 continue
             
-            # Display formula explanation
+            # Display simplified formula explanation
             if 'formula_explanation' in analysis:
                 formula = analysis['formula_explanation']
-                typer.echo("📊 RAGChecker Hallucination Formula:")
-                typer.echo(f"  {formula['ragchecker_formula']}")
-                typer.echo(f"  Calculation: {formula['calculation']}")
-                typer.echo(f"  Interpretation: {formula['interpretation']}")
-                typer.echo(f"  Explanation: {formula['explanation']}")
-                typer.echo(f"  Evaluation Mode: {formula['evaluation_mode'].replace('_', ' ').title()}")
+                typer.echo("Hallucination Score:")
+                typer.echo(f"  {formula['calculation']} = {formula['interpretation']}")
                 typer.echo()
             
             # Display enhanced claim-level analysis
             if 'claim_analysis' in analysis and 'claims' in analysis['claim_analysis']:
                 claims = analysis['claim_analysis']['claims']
-                typer.echo("🔍 Claim-Level Analysis:")
+                typer.echo("Claim-Level Analysis:")
                 for claim in claims:
                     status_icon = "✓" if claim['classification'] == 'correct_grounded' else "✗"
                     typer.echo(f"  {status_icon} Claim {claim['claim_number']}: {claim['claim_text']}")
@@ -485,7 +583,7 @@ def analyze(
                         typer.echo(f"    Context Support: ✓ {claim['context_support']['explanation']}")
                     else:
                         typer.echo(f"    Context Support: ✗ {claim['context_support']['explanation']}")
-                    if analysis.get('evaluation_mode') == 'full':
+                    if analysis.get('evaluation_mode') == 'full' and 'ground_truth_support' in claim:
                         if claim['ground_truth_support']['supported']:
                             typer.echo(f"    Ground Truth: ✓ {claim['ground_truth_support']['explanation']}")
                         else:
@@ -517,18 +615,22 @@ def analyze(
                     typer.echo("  Recommendations:")
                     for rec in insights['recommendations']:
                         typer.echo(f"    • {rec}")
+                if insights.get('specific_problems'):
+                    typer.echo("  Irrelevant Chunks:")
+                    for problem in insights['specific_problems']:
+                        typer.echo(f"    • Chunk {problem['chunk_number']}: {problem['chunk_text']}")
                 typer.echo()
             
             # Display summary verdict prominently for casual users
             if 'summary_verdict' in analysis:
-                typer.echo("📋 Summary Verdict:")
+                typer.echo("Summary Verdict:")
                 typer.echo(f"  {analysis['summary_verdict']}")
                 typer.echo()
             
             # Display action recommendations
             if 'action_recommendations' in analysis:
                 action_rec = analysis['action_recommendations']
-                typer.echo("🎯 Action Recommendations:")
+                typer.echo("Action Recommendations:")
                 typer.echo(f"  Action: {action_rec.get('action', 'none').replace('_', ' ').title()}")
                 typer.echo(f"  Reason: {action_rec.get('reason', 'unknown').replace('_', ' ').title()}")
                 typer.echo(f"  Confidence: {action_rec.get('confidence', 'unknown').title()}")
@@ -568,6 +670,7 @@ def analyze(
                 typer.echo(f"  Noise Chunks: {ctx_summary.get('noise_chunks', 0)}")
                 typer.echo(f"  Average Relevance Score: {ctx_summary.get('average_relevance_score', 0.0):.3f}")
             
+            typer.echo()
             typer.echo()
     
     else:

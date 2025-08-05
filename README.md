@@ -106,6 +106,112 @@ python cli.py test --input examples/perfect_faithfulness_test.json --metric fait
 | `context_precision` | RAGAS | Measures chunk relevance and ranking quality | Dual metrics (RAGAS + Simple), Precision@k calculations, Ranking quality analysis |
 | `hallucination` | RAGChecker | Detects hallucinated information | Claim-level entailment analysis, Ground truth comparison, Pure invention detection |
 
+## Scoring Metrics & Interpretation
+
+### RAGAS Faithfulness Scoring
+
+**Formula:** `Supported Claims / Total Claims`
+
+| Score Range | Interpretation | Confidence Level | Action Required |
+|-------------|----------------|------------------|-----------------|
+| 0.9 - 1.0 | Excellent | High | None - System performing well |
+| 0.7 - 0.89 | Good | Medium | Minor improvements recommended |
+| 0.5 - 0.69 | Moderate | Medium | Review generation constraints |
+| 0.3 - 0.49 | Poor | High | Significant improvements needed |
+| 0.0 - 0.29 | Critical | High | Major overhaul required |
+
+**Claim Classification:**
+- **Supported**: Claim is directly supported by retrieved context
+- **Unsupported**: Claim lacks sufficient context evidence
+- **Contradicted**: Claim conflicts with retrieved context
+
+### RAGAS Context Precision Scoring
+
+**Dual Metrics System:**
+
+1. **RAGAS Context Precision** (Ranking Quality)
+   - **Formula:** `Σ(Precision@k × v_k) / Σ(v_k)`
+   - **Measures:** How well relevant chunks are ranked early
+   - **Range:** 0.0 - 1.0
+
+2. **Simple Context Precision** (Retrieval Cleanliness)
+   - **Formula:** `Relevant Chunks / Total Chunks`
+   - **Measures:** Overall quality of retrieved content
+   - **Range:** 0.0 - 1.0
+
+| RAGAS Score | Simple Score | Interpretation | Ranking Quality | Noise Level | Action |
+|-------------|--------------|----------------|-----------------|-------------|---------|
+| 0.8+ | 0.8+ | Excellent | Good | Low | None |
+| 0.8+ | <0.5 | Good ranking, noisy retrieval | Good | High | Prune irrelevant chunks |
+| <0.5 | 0.8+ | Poor ranking, clean retrieval | Poor | Low | Improve ranking algorithm |
+| <0.5 | <0.5 | Poor ranking, noisy retrieval | Poor | High | Overhaul retrieval system |
+
+**Precision@k Calculation:**
+- **Precision@1:** Relevance of first chunk
+- **Precision@2:** Relevance of first two chunks
+- **Precision@3:** Relevance of first three chunks
+- **Weighted Average:** Early chunks weighted higher
+
+### RAGChecker Hallucination Scoring
+
+**Formula:** `np.mean(unfaithful) * 100`
+
+| Score Range | Risk Level | Interpretation | Confidence | Action Required |
+|-------------|------------|----------------|------------|-----------------|
+| 0-10% | Low | Minimal hallucination | High | Monitor |
+| 11-25% | Moderate | Some hallucination | Medium | Review prompts |
+| 26-50% | High | Significant hallucination | High | Improve grounding |
+| 51-75% | Critical | Major hallucination | High | Major fixes needed |
+| 76-100% | Severe | Severe hallucination | High | Complete overhaul |
+
+**Claim Classification:**
+- **Correct Grounded**: Claim is both correct and supported by context
+- **Hallucination**: Claim is not supported by context (regardless of correctness)
+- **Context Supported but Incorrect**: Claim is supported by context but factually wrong
+- **Missing Context Evidence**: Claim lacks supporting context
+
+**Evaluation Modes:**
+- **Context Only**: Evaluates against retrieved chunks only
+- **Full Evaluation**: Evaluates against both context and ground truth
+
+### Confidence Levels
+
+| Level | Description | Reliability | Use Case |
+|-------|-------------|-------------|----------|
+| High | Strong evidence, clear patterns | 90%+ | Production decisions |
+| Medium | Moderate evidence, some uncertainty | 70-89% | Development guidance |
+| Low | Limited evidence, high uncertainty | <70% | Further investigation needed |
+
+### Action Recommendations
+
+**Faithfulness Actions:**
+- **Improve Generation**: Enhance prompt engineering for better grounding
+- **Review Constraints**: Adjust generation parameters
+- **Critical Fix**: Major overhaul of generation pipeline
+
+**Context Precision Actions:**
+- **Prune**: Remove irrelevant chunks from retrieval
+- **Rerank**: Improve ranking algorithm
+- **Overhaul**: Complete retrieval system redesign
+
+**Hallucination Actions:**
+- **Monitor**: Continue current approach with observation
+- **Review Prompts**: Enhance grounding instructions
+- **Critical Fix**: Immediate intervention required
+- **Complete Overhaul**: Fundamental system redesign
+
+### Additional Metrics
+
+**Claim-Level Metrics:**
+- **Claim Density**: Claims per word in response
+- **Average Claim Length**: Words per claim
+- **Context Support Rate**: Percentage of claims with context support
+
+**Context-Level Metrics:**
+- **Noise Rate**: Percentage of irrelevant chunks
+- **Early Precision**: Relevance of top-ranked chunks
+- **Late Precision**: Relevance of lower-ranked chunks
+
 ## Detailed Analysis Features
 
 ### RAGAS Faithfulness
@@ -181,6 +287,135 @@ The tool expects a JSON file with the following structure:
   }
 ]
 ```
+
+## Scoring Metrics & Interpretation
+
+### RAGAS Faithfulness
+
+**What it measures:** How well the generated answer is supported by the retrieved context.
+
+**Formula:** `Supported Claims / Total Claims`
+
+**Score Interpretation:**
+| Score Range | Level | Meaning | Action Required |
+|-------------|-------|---------|-----------------|
+| 0.9 - 1.0 | Excellent | Almost all claims supported | ✅ Maintain system |
+| 0.7 - 0.89 | Good | Most claims supported | ⚠️ Minor improvements |
+| 0.5 - 0.69 | Moderate | Some unsupported claims | 🔧 Improve generation |
+| 0.3 - 0.49 | Poor | Many unsupported claims | 🚨 Major overhaul |
+| 0.0 - 0.29 | Critical | Most claims unsupported | 🔥 Complete redesign |
+
+**Example Calculation:**
+```
+Question: "What time does the Louvre open?"
+Answer: "The Louvre opens at 9 AM and closes at 6 PM."
+Context: ["The Louvre Museum is open 9 AM–6 PM daily."]
+
+Claims: 2 (opening time, closing time)
+Supported: 2 (both found in context)
+Score: 2/2 = 1.0 (Perfect faithfulness)
+```
+
+**Action Recommendations:**
+- **Improve Generation**: Focus on making responses more faithful to context
+- **Enhance Retrieval**: Get better context to support claims
+- **Maintain**: System is working well
+
+---
+
+### RAGAS Context Precision
+
+**What it measures:** How well the retrieval system ranks relevant chunks early and filters out noise.
+
+**Two Metrics:**
+
+1. **RAGAS Context Precision** (Ranking Quality):
+   - **Formula:** `Σ(Precision@k × v_k) / Σ(v_k)`
+   - **Where:** `v_k = 1` for relevant chunks, `v_k = 0` for irrelevant chunks
+   - **Measures:** "Did we rank relevant chunks early?"
+
+2. **Simple Context Precision** (Noise Analysis):
+   - **Formula:** `Relevant Chunks / Total Chunks`
+   - **Measures:** "How much retrieved content is useful?"
+
+**Detailed Calculation Example:**
+```
+Retrieved Chunks: [Relevant, Relevant, Irrelevant, Relevant, Irrelevant]
+Precision@1: 1/1 = 1.0
+Precision@2: 2/2 = 1.0  
+Precision@3: 2/3 = 0.667
+Precision@4: 3/4 = 0.75
+Precision@5: 3/5 = 0.6
+
+Weighted Calculation:
+Position 1 (relevant): Precision@1 × 1 = 1.0
+Position 2 (relevant): Precision@2 × 1 = 1.0
+Position 4 (relevant): Precision@4 × 1 = 0.75
+Final Score: (1.0 + 1.0 + 0.75) / 3 = 0.917
+
+Simple Precision: 3 relevant / 5 total = 0.6
+```
+
+**Score Interpretation:**
+| RAGAS Score | Simple Score | Meaning | Action Required |
+|-------------|--------------|---------|-----------------|
+| 0.9+ | 0.8+ | Excellent ranking & low noise | ✅ Maintain |
+| 0.8+ | 0.5-0.7 | Good ranking, moderate noise | ⚠️ Reduce noise |
+| 0.5-0.7 | 0.8+ | Poor ranking, low noise | 🔧 Improve ranking |
+| <0.5 | <0.5 | Poor ranking & high noise | 🚨 Overhaul retrieval |
+
+**Action Recommendations:**
+- **Maintain**: Both ranking and noise are good
+- **Reduce Noise**: Good ranking but too much irrelevant content
+- **Improve Ranking**: Low noise but relevant chunks appear late
+- **Overhaul Retrieval**: Both ranking and noise need fixing
+
+---
+
+### RAGChecker Hallucination
+
+**What it measures:** How many claims in the response are pure inventions (not supported by context or ground truth).
+
+**Formula:** `Hallucinated Claims / Total Claims × 100`
+
+**Evaluation Modes:**
+1. **Context-Only Mode** (no ground truth): Claims checked against retrieved context
+2. **Full Evaluation Mode** (with ground truth): Claims checked against both context AND ground truth
+
+**Score Interpretation:**
+| Score Range | Risk Level | Meaning | Action Required |
+|-------------|------------|---------|-----------------|
+| 0-10% | Low | Minimal hallucinations | ✅ Monitor |
+| 11-25% | Moderate | Some hallucinations | ⚠️ Improve generation |
+| 26-50% | High | Many hallucinations | 🚨 Major fixes |
+| 51%+ | Critical | Mostly hallucinations | 🔥 Complete overhaul |
+
+**Claim Classifications:**
+- **Correct Grounded**: Supported by context/ground truth
+- **Correct Ungrounded**: True but not in context/ground truth
+- **Incorrect Grounded**: False but supported by context/ground truth
+- **Incorrect Ungrounded**: False and not supported (HALLUCINATION)
+
+**Example Analysis:**
+```
+Question: "What is Tokyo's population?"
+Answer: "Tokyo has 14 million people and beautiful cherry blossoms."
+Ground Truth: "Tokyo has 14 million people."
+
+Claims:
+1. "Tokyo has 14 million people" → Correct Grounded ✅
+2. "Tokyo has beautiful cherry blossoms" → Correct Ungrounded ⚠️
+
+Hallucination Rate: 0/2 = 0% (no pure inventions)
+```
+
+**Action Recommendations:**
+- **Monitor**: Low hallucination risk
+- **Improve Generation**: Reduce unsupported claims
+- **Enhance Retrieval**: Get better context to support claims
+- **Complete Overhaul**: System generating mostly false claims
+
+---
 
 ## Enhanced Output Features
 

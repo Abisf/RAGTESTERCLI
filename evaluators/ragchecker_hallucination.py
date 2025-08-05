@@ -40,10 +40,16 @@ class RAGCheckerHallucinationEvaluator(BaseEvaluator):
     def __init__(self, model_config: Optional[Dict[str, Any]] = None):
         super().__init__(model_config)
         
-        # Get configuration from environment variables set by CLI
-        self.model = os.getenv("RAGCLI_LLM_MODEL", "gpt-4")
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        self.api_base = os.getenv("OPENAI_API_BASE")
+        # Get configuration from model_config (passed from CLI) or fallback to environment
+        if model_config:
+            self.model = model_config.get("llm_model", os.getenv("RAGCLI_LLM_MODEL", "gpt-4"))
+            self.api_key = model_config.get("api_key", os.getenv("OPENAI_API_KEY"))
+            self.api_base = model_config.get("api_base", os.getenv("OPENAI_API_BASE"))
+        else:
+            # Fallback to environment variables if no model_config provided
+            self.model = os.getenv("RAGCLI_LLM_MODEL", "gpt-4")
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            self.api_base = os.getenv("OPENAI_API_BASE")
         
         if not self.api_key:
             raise ValueError("API key not found. Set via --api-key flag or .env file.")

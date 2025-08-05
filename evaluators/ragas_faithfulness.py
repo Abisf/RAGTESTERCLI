@@ -25,32 +25,90 @@ class RagasFaithfulnessEvaluator(BaseEvaluator):
     def __init__(self, model_config: Optional[Dict[str, Any]] = None):
         super().__init__(model_config)
         
-        # Get configuration from environment variables set by CLI
-        self.model = os.getenv("RAGCLI_LLM_MODEL", "gpt-4")
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        self.api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+        # Get configuration from model_config (passed from CLI) or fallback to environment
+        if model_config:
+            self.model = model_config.get("llm_model", os.getenv("RAGCLI_LLM_MODEL", "gpt-4"))
+            self.api_key = model_config.get("api_key", os.getenv("OPENAI_API_KEY"))
+            self.api_base = model_config.get("api_base", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"))
+        else:
+            # Fallback to environment variables if no model_config provided
+            self.model = os.getenv("RAGCLI_LLM_MODEL", "gpt-4")
+            self.api_key = os.getenv("OPENAI_API_KEY")
+            self.api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
         
         if not self.api_key:
             raise ValueError("API key not found. Set via --api-key flag or .env file.")
         
-        # Configure RAGAS LLM for claim extraction and verification
-        self.llm = ChatOpenAI(
-            model_name=self.model,
-            openai_api_key=self.api_key,
-            openai_api_base=self.api_base,
-            temperature=0  # Deterministic for evaluation
-        )
-        
-        self.embeddings = OpenAIEmbeddings(
-            openai_api_key=self.api_key,
-            openai_api_base=self.api_base
-        )
+        # Get appropriate LLM and embeddings based on model
+        self.llm = self._get_langchain_llm()
+        self.embeddings = self._get_embeddings()
         
         self.run_config = RunConfig(
             max_workers=1,
             max_wait=60,
             max_retries=3
         )
+    
+    def _get_langchain_llm(self):
+        """Get appropriate LangChain LLM based on model name."""
+        model_lower = self.model.lower()
+        
+        # Check if we're using OpenRouter (which provides OpenAI-compatible API for all models)
+        if self.api_base and "openrouter.ai" in self.api_base:
+            # For OpenRouter, always use ChatOpenAI regardless of model type
+            return ChatOpenAI(
+                model_name=self.model,
+                openai_api_key=self.api_key,
+                openai_api_base=self.api_base,
+                temperature=0
+            )
+        elif "claude" in model_lower or "anthropic" in model_lower:
+            # Direct Anthropic API (not via OpenRouter)
+            from langchain_anthropic import ChatAnthropic
+            anthropic_key = os.getenv("ANTHROPIC_API_KEY", self.api_key)
+            return ChatAnthropic(
+                model=self.model.replace("anthropic/", ""),
+                anthropic_api_key=anthropic_key,
+                temperature=0
+            )
+        elif "gemini" in model_lower or "google" in model_lower:
+            # Direct Google API (not via OpenRouter)
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            google_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY", self.api_key)
+            clean_model = self.model.replace("google/", "").replace("gemini-", "gemini-1.5-")
+            if clean_model == "gemini-pro":
+                clean_model = "gemini-1.5-pro"
+            return ChatGoogleGenerativeAI(
+                model=clean_model,
+                google_api_key=google_key,
+                temperature=0
+            )
+        else:
+            # Default to OpenAI-compatible (includes direct OpenAI)
+            return ChatOpenAI(
+                model_name=self.model,
+                openai_api_key=self.api_key,
+                openai_api_base=self.api_base,
+                temperature=0
+            )
+    
+    def _get_embeddings(self):
+        """Get appropriate embeddings based on model."""
+        model_lower = self.model.lower()
+        
+        if "gemini" in model_lower or "google" in model_lower:
+            from langchain_google_genai import GoogleGenerativeAIEmbeddings
+            google_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY", self.api_key)
+            return GoogleGenerativeAIEmbeddings(
+                model="models/embedding-001",
+                google_api_key=google_key
+            )
+        else:
+            # Default to OpenAI embeddings for most providers
+            return OpenAIEmbeddings(
+                openai_api_key=self.api_key,
+                openai_api_base=self.api_base
+            )
     
     def evaluate(self, data: Dict[str, Any]) -> float:
         """
@@ -210,7 +268,8 @@ Answer:"""
             context = [str(context)]
         
         try:
-            client = LLMClient()
+            # Pass model_config to LLMClient so it uses the correct API key and base
+            client = LLMClient(self.model_config)
             context_text = "\n".join(context)
             
             # Extract claims

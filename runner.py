@@ -12,6 +12,7 @@ from typing import Dict, List, Any, Optional
 from tabulate import tabulate
 from evaluators import get_evaluator
 import config
+import typer
 
 def load_input_data(file_path: str) -> List[Dict[str, Any]]:
     """Load and validate input data from JSON file."""
@@ -64,14 +65,30 @@ def run_evaluation(
     
     # Run evaluation on each item
     scores = []
-    for item in data:
+    error_messages = []
+    
+    for i, item in enumerate(data):
         try:
             score = evaluator.evaluate(item)
             scores.append(score)
         except Exception as e:
-            if verbose:
-                print(f"Error evaluating item: {e}")
-            scores.append(0.0)  # Default score on error
+            error_msg = str(e)
+            
+            # Check for quota/rate limit errors and stop execution
+            if any(keyword in error_msg.lower() for keyword in ["quota", "rate limit", "insufficient_quota", "billing"]):
+                print(f"\nError: API quota exceeded")
+                print(f"Please check your billing and usage limits, or try again later.")
+                print(f"Details: {error_msg}")
+                raise typer.Exit(1)
+            elif "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower():
+                print(f"\nError: Authentication failed")
+                print(f"Please check your API key and try again.")
+                print(f"Details: {error_msg}")
+                raise typer.Exit(1)
+            else:
+                friendly_error = f"Evaluation failed: {error_msg}"
+                error_messages.append(f"Item {i+1}: {friendly_error}")
+                scores.append(float('nan'))  # Use NaN for other errors
     
     end_time = time.time()
     execution_time = round(end_time - start_time, 2)
@@ -91,6 +108,10 @@ def run_evaluation(
         },
         "scores": scores
     }
+    
+    # Add error messages if any occurred
+    if error_messages:
+        result["errors"] = error_messages
     
     # Format output
     output = format_output(result, output_format)
@@ -134,7 +155,14 @@ def format_output(result: Dict[str, Any], format_type: str = "json") -> str:
         score_data = [[i, score] for i, score in enumerate(result['scores'])]
         score_table = tabulate(score_data, headers=["Item", "Score"], tablefmt="grid")
         
-        return f"{table}\n\nIndividual Scores:\n{score_table}"
+        output = f"{table}\n\nIndividual Scores:\n{score_table}"
+        
+        # Add error messages if any
+        if 'errors' in result:
+            error_table = tabulate([[msg] for msg in result['errors']], headers=["Error"], tablefmt="grid")
+            output += f"\n\nErrors:\n{error_table}"
+        
+        return output
     
     else:
         raise ValueError(f"Unsupported output format: {format_type}")
