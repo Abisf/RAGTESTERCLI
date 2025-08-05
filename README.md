@@ -78,18 +78,23 @@ export ANTHROPIC_API_KEY=sk-ant-your-key-here
 
 ### Basic Usage
 
+**⚠️ Important**: When using OpenRouter, always include `--api-base https://openrouter.ai/api/v1`
+
 ```bash
-# Quick evaluation (scores only)
-python cli.py test --input examples/test.json --metric faithfulness_ragas --llm-model gpt-4
+# Quick evaluation with OpenRouter (recommended)
+python cli.py test --input examples/perfect_faithfulness_test.json --metric faithfulness_ragas --llm-model openai/gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
 
 # Comprehensive analysis with detailed diagnostics
-python cli.py analyze --input examples/test.json --metric faithfulness --llm-model gpt-3.5-turbo
+python cli.py analyze --input examples/perfect_faithfulness_test.json --metric faithfulness --llm-model openai/gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
 
-# OpenRouter support (100+ models)
-python cli.py analyze --input examples/test.json --metric hallucination --llm-model anthropic/claude-3-haiku --api-base https://openrouter.ai/api/v1
+# Context precision analysis
+python cli.py test --input examples/louvre_context_precision_test.json --metric context_precision_ragas --llm-model openai/gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
 
-# Context precision analysis with dual metrics
-python cli.py analyze --input examples/louvre_context_precision_test.json --metric context_precision --llm-model gpt-3.5-turbo
+# Hallucination detection
+python cli.py test --input examples/hallucinated_test.json --metric hallucination_ragchecker --llm-model openai/gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
+
+# Direct OpenAI (if you have OpenAI API key)
+python cli.py test --input examples/perfect_faithfulness_test.json --metric faithfulness_ragas --llm-model gpt-3.5-turbo
 ```
 
 ## Supported Metrics
@@ -217,19 +222,30 @@ RAGTESTERCLI/
 ## Advanced Usage
 
 ### Multi-Provider LLM Support
-```bash
-# OpenAI (Direct)
-python cli.py analyze --input test.json --metric faithfulness --llm-model gpt-4
 
-# OpenRouter (100+ models)
-python cli.py analyze --input test.json --metric faithfulness --llm-model gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
-python cli.py analyze --input test.json --metric hallucination --llm-model anthropic/claude-3-haiku --api-base https://openrouter.ai/api/v1
-python cli.py analyze --input test.json --metric context_precision --llm-model google/gemini-pro --api-base https://openrouter.ai/api/v1
+**⚠️ Remember**: Always use `--api-base https://openrouter.ai/api/v1` for OpenRouter
+
+```bash
+# OpenRouter (100+ models) - Recommended
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model openai/gpt-4 --api-base https://openrouter.ai/api/v1
+python cli.py test --input test.json --metric context_precision_ragas --llm-model anthropic/claude-3-haiku --api-base https://openrouter.ai/api/v1
+python cli.py test --input test.json --metric hallucination_ragchecker --llm-model meta-llama/llama-3.1-8b-instruct --api-base https://openrouter.ai/api/v1
+
+# Direct OpenAI (if you have OpenAI API key)
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model gpt-4
+
+# Direct Anthropic (if you have Anthropic API key)
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model claude-3-haiku-20240307
 ```
 
 ### Environment Variables
 ```bash
-# .env file
+# .env file for OpenRouter (recommended)
+OPENAI_API_KEY=your_openrouter_key
+OPENAI_API_BASE=https://openrouter.ai/api/v1
+RAGCLI_LLM_MODEL=openai/gpt-3.5-turbo
+
+# .env file for Direct OpenAI
 OPENAI_API_KEY=your_openai_key
 OPENAI_API_BASE=https://api.openai.com/v1
 RAGCLI_LLM_MODEL=gpt-4
