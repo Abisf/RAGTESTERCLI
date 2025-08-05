@@ -242,7 +242,6 @@ python cli.py analyze --input test.json --metric faithfulness
 - **Confidence Assessment**: Reliability indicators for recommendations
 
 ### Streamlined Output
-- **No Redundancy**: Eliminated duplicate information sections
 - **Logical Flow**: Formula → Analysis → Summary → Actions
 - **Comprehensive Coverage**: All evaluators provide equal detail level
 
