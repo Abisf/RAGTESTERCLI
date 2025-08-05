@@ -39,7 +39,7 @@ This tool provides a unified interface for running RAG evaluation metrics from p
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Abisf/RAGTESTERCLI
 cd RAGTESTERCLI
 ```
 
