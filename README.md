@@ -27,7 +27,7 @@ This tool provides a unified interface for running RAG evaluation metrics from p
 
 - **Detailed Diagnostic Analysis**: Step-by-step claim verification, formula explanations, and context usage analysis
 - **Professional Reporting**: Summary verdicts, action recommendations, and confidence assessments
-- **Multi-Provider LLM Support**: OpenAI, Anthropic, Google, OpenRouter, and more
+- **Universal LLM Support**: OpenAI, Anthropic, Google, Meta Llama, Cohere, and any OpenAI-compatible API
 - **Multiple Evaluation Metrics**: RAGAS Faithfulness, Context Precision, and RAGChecker Hallucination
 - **Comprehensive Insights**: Claim-level analysis, context utilization, and diagnostic recommendations
 - **Extensible Design**: Easy to add new metrics and providers
@@ -78,23 +78,24 @@ export ANTHROPIC_API_KEY=sk-ant-your-key-here
 
 ### Basic Usage
 
-**⚠️ Important**: When using OpenRouter, always include `--api-base https://openrouter.ai/api/v1`
-
 ```bash
-# Quick evaluation with OpenRouter (recommended)
-python cli.py test --input examples/perfect_faithfulness_test.json --metric faithfulness_ragas --llm-model openai/gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
+# OpenAI (Direct) - Most common
+python cli.py test --input examples/perfect_faithfulness_test.json --metric faithfulness_ragas --llm-model gpt-4 --api-key YOUR_OPENAI_KEY
 
-# Comprehensive analysis with detailed diagnostics
-python cli.py analyze --input examples/perfect_faithfulness_test.json --metric faithfulness --llm-model openai/gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
+# Anthropic Claude (Direct)
+python cli.py test --input examples/perfect_faithfulness_test.json --metric faithfulness_ragas --llm-model claude-3-haiku-20240307 --api-key YOUR_ANTHROPIC_KEY
 
-# Context precision analysis
-python cli.py test --input examples/louvre_context_precision_test.json --metric context_precision_ragas --llm-model openai/gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
+# OpenRouter (100+ models including GPT, Claude, Llama, etc.)
+python cli.py test --input examples/perfect_faithfulness_test.json --metric faithfulness_ragas --llm-model openai/gpt-3.5-turbo --api-key YOUR_OPENROUTER_KEY --api-base https://openrouter.ai/api/v1
 
-# Hallucination detection
-python cli.py test --input examples/hallucinated_test.json --metric hallucination_ragchecker --llm-model openai/gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
+# Context precision analysis (any provider)
+python cli.py test --input examples/louvre_context_precision_test.json --metric context_precision_ragas --llm-model gpt-3.5-turbo --api-key YOUR_API_KEY
 
-# Direct OpenAI (if you have OpenAI API key)
-python cli.py test --input examples/perfect_faithfulness_test.json --metric faithfulness_ragas --llm-model gpt-3.5-turbo
+# Hallucination detection (any provider)
+python cli.py test --input examples/hallucinated_test.json --metric hallucination_ragchecker --llm-model gpt-4 --api-key YOUR_API_KEY
+
+# Using environment variables (no --api-key needed)
+python cli.py test --input examples/perfect_faithfulness_test.json --metric faithfulness_ragas --llm-model gpt-4
 ```
 
 ## Supported Metrics
@@ -223,32 +224,52 @@ RAGTESTERCLI/
 
 ### Multi-Provider LLM Support
 
-**⚠️ Remember**: Always use `--api-base https://openrouter.ai/api/v1` for OpenRouter
+**The CLI supports ALL major LLM providers and models:**
 
 ```bash
-# OpenRouter (100+ models) - Recommended
-python cli.py test --input test.json --metric faithfulness_ragas --llm-model openai/gpt-4 --api-base https://openrouter.ai/api/v1
-python cli.py test --input test.json --metric context_precision_ragas --llm-model anthropic/claude-3-haiku --api-base https://openrouter.ai/api/v1
-python cli.py test --input test.json --metric hallucination_ragchecker --llm-model meta-llama/llama-3.1-8b-instruct --api-base https://openrouter.ai/api/v1
+# OpenAI Models (Direct API)
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model gpt-4 --api-key YOUR_OPENAI_KEY
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model gpt-3.5-turbo --api-key YOUR_OPENAI_KEY
 
-# Direct OpenAI (if you have OpenAI API key)
-python cli.py test --input test.json --metric faithfulness_ragas --llm-model gpt-4
+# Anthropic Claude (Direct API)
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model claude-3-haiku-20240307 --api-key YOUR_ANTHROPIC_KEY
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model claude-3-sonnet-20240229 --api-key YOUR_ANTHROPIC_KEY
 
-# Direct Anthropic (if you have Anthropic API key)
-python cli.py test --input test.json --metric faithfulness_ragas --llm-model claude-3-haiku-20240307
+# Google Models (via OpenRouter)
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model google/gemini-pro --api-key YOUR_OPENROUTER_KEY --api-base https://openrouter.ai/api/v1
+
+# Meta Llama Models (via OpenRouter)
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model meta-llama/llama-3.1-70b-instruct --api-key YOUR_OPENROUTER_KEY --api-base https://openrouter.ai/api/v1
+
+# Cohere Models (via OpenRouter)
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model cohere/command-r-plus --api-key YOUR_OPENROUTER_KEY --api-base https://openrouter.ai/api/v1
+
+# Any OpenAI-compatible API
+python cli.py test --input test.json --metric faithfulness_ragas --llm-model custom-model --api-key YOUR_API_KEY --api-base https://your-custom-endpoint.com/v1
 ```
 
 ### Environment Variables
+
+**Choose your preferred provider setup:**
+
 ```bash
-# .env file for OpenRouter (recommended)
+# Option 1: OpenAI Direct (Most Common)
+OPENAI_API_KEY=your_openai_key
+RAGCLI_LLM_MODEL=gpt-4
+
+# Option 2: Anthropic Direct  
+ANTHROPIC_API_KEY=your_anthropic_key
+RAGCLI_LLM_MODEL=claude-3-haiku-20240307
+
+# Option 3: OpenRouter (Access to 100+ models)
 OPENAI_API_KEY=your_openrouter_key
 OPENAI_API_BASE=https://openrouter.ai/api/v1
 RAGCLI_LLM_MODEL=openai/gpt-3.5-turbo
 
-# .env file for Direct OpenAI
-OPENAI_API_KEY=your_openai_key
-OPENAI_API_BASE=https://api.openai.com/v1
-RAGCLI_LLM_MODEL=gpt-4
+# Option 4: Custom API Endpoint
+OPENAI_API_KEY=your_custom_key
+OPENAI_API_BASE=https://your-endpoint.com/v1
+RAGCLI_LLM_MODEL=your-model-name
 ```
 
 **Supported Environment Variables:**
