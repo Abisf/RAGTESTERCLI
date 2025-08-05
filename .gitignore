@@ -46,4 +46,14 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+# Coverage files (private information)
+.coverage*
+htmlcov/
+.pytest_cache/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+*.local 
