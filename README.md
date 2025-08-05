@@ -8,9 +8,9 @@ A comprehensive CLI tool for evaluating Retrieval-Augmented Generation (RAG) pip
 
 RAG Tester CLI is the first step toward a full-stack observability and testing platform for Retrieval-Augmented Generation (RAG) and Agentic AI systems.
 
-- **Today**: Run evaluations by unifying different RAG testing tools targeting fragmentation (currently)
-- **Next**: Capture telemetry, version RAG artifacts locally, hosted artifact registry, agent simulation, compliance tooling
-- **Endgame**: The control center for intelligent systems — versioning, testing, and governing AI behavior at scale
+- Currently: Run evaluations by unifying different RAG testing tools targeting fragmentation
+- Next: Capture telemetry, version RAG artifacts locally, hosted artifact registry, agent simulation, compliance tooling
+- Endgame: The control center for intelligent systems — versioning, testing, and governing AI behavior at scale
 
 ## Contact & Feedback
 
