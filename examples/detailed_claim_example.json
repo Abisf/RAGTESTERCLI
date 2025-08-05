@@ -1,0 +1,14 @@
+[
+  {
+    "scenario": "Low Risk - Multiple Claims with Minor Unsupported Information",
+    "question": "What are the main features of Tokyo?",
+    "context": [
+      "Tokyo is the capital city of Japan with 14 million people.",
+      "Mount Fuji is visible from Tokyo on clear days.",
+      "Japanese cuisine is popular worldwide.",
+      "Tokyo has many modern skyscrapers and traditional temples."
+    ],
+    "answer": "Tokyo is the capital of Japan with 14 million people. The city has excellent sushi restaurants and is famous for its cherry blossom season. Tokyo also has the busiest train station in the world and many modern skyscrapers alongside traditional temples.",
+    "ground_truth": "Tokyo is the capital of Japan with 14 million people and has many modern skyscrapers and traditional temples."
+  }
+] 

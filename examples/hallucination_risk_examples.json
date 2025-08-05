@@ -1,0 +1,89 @@
+[
+  {
+    "scenario": "No Hallucination - Fully Grounded",
+    "question": "What time does the Louvre open on weekends?",
+    "context": [
+      "The Louvre Museum is open 9 AM–6 PM on Saturday and Sunday.",
+      "The Louvre is located in Paris, France.",
+      "The museum houses the famous Mona Lisa painting."
+    ],
+    "answer": "The Louvre opens at 9 AM on Saturday and Sunday.",
+    "ground_truth": "The Louvre Museum opens at 9 AM on weekends."
+  },
+  {
+    "scenario": "Low Risk - Minor Unsupported Claims",
+    "question": "What is the population of Tokyo?",
+    "context": [
+      "Tokyo is the capital city of Japan with 14 million people.",
+      "Mount Fuji is visible from Tokyo on clear days.",
+      "Japanese cuisine is popular worldwide."
+    ],
+    "answer": "Tokyo has a population of 14 million people and is known for its excellent sushi restaurants.",
+    "ground_truth": "Tokyo has a population of 14 million people."
+  },
+  {
+    "scenario": "Moderate Risk - Some Unsupported Information",
+    "question": "How do solar panels work?",
+    "context": [
+      "Solar panels convert sunlight into electricity using photovoltaic cells.",
+      "The efficiency of solar panels has improved over time.",
+      "Solar energy is a renewable resource."
+    ],
+    "answer": "Solar panels convert sunlight into electricity using photovoltaic cells. They typically last 25-30 years and can generate up to 400 watts per panel. The technology was first developed in the 1950s.",
+    "ground_truth": "Solar panels convert sunlight into electricity using photovoltaic cells."
+  },
+  {
+    "scenario": "High Risk - Significant Unsupported Claims",
+    "question": "What causes earthquakes?",
+    "context": [
+      "Earthquakes are caused by the movement of tectonic plates.",
+      "When tectonic plates shift, they release energy as seismic waves.",
+      "The magnitude of earthquakes is measured on the Richter scale."
+    ],
+    "answer": "Earthquakes are caused by tectonic plate movement that releases energy as seismic waves. The largest earthquake ever recorded was in Chile in 1960 with a magnitude of 9.5. Most earthquakes occur along fault lines in the Pacific Ring of Fire, which accounts for 90% of all seismic activity worldwide.",
+    "ground_truth": "Earthquakes are caused by tectonic plate movement that releases energy as seismic waves."
+  },
+  {
+    "scenario": "Critical Risk - Extensive Hallucination",
+    "question": "What is photosynthesis?",
+    "context": [
+      "Photosynthesis is the process by which plants convert sunlight into energy.",
+      "Plants use chlorophyll to capture light energy and produce glucose."
+    ],
+    "answer": "Photosynthesis is a complex biochemical process where plants convert sunlight into chemical energy. This process was discovered by Jan Ingenhousz in 1779 and involves multiple stages including light-dependent and light-independent reactions. The efficiency of photosynthesis varies between plant species, with C4 plants being more efficient than C3 plants. The process produces oxygen as a byproduct and is responsible for removing approximately 100 billion tons of CO2 from the atmosphere annually.",
+    "ground_truth": "Photosynthesis is the process by which plants convert sunlight into energy using chlorophyll to produce glucose."
+  },
+  {
+    "scenario": "Context-Only Evaluation - No Ground Truth",
+    "question": "What is the speed of light?",
+    "context": [
+      "The speed of light in a vacuum is approximately 299,792,458 meters per second.",
+      "Light travels faster in air than in water.",
+      "Einstein's theory of relativity is based on the constant speed of light."
+    ],
+    "answer": "The speed of light is approximately 299,792,458 meters per second, which is the fastest speed possible in the universe according to Einstein's theory of relativity.",
+    "ground_truth": ""
+  },
+  {
+    "scenario": "Mixed Hallucination - Some Grounded, Some Not",
+    "question": "What are the health benefits of exercise?",
+    "context": [
+      "Regular exercise improves cardiovascular health and reduces disease risk.",
+      "Physical activity helps maintain healthy weight and strengthens muscles.",
+      "Exercise also improves mental health by reducing stress and anxiety."
+    ],
+    "answer": "Exercise improves cardiovascular health, helps maintain weight, strengthens muscles, and reduces stress. It also boosts the immune system, improves sleep quality, and can increase lifespan by up to 5 years. Regular exercise has been shown to reduce the risk of cancer by 30% and improve cognitive function in older adults.",
+    "ground_truth": "Exercise improves cardiovascular health, helps maintain weight, strengthens muscles, and reduces stress."
+  },
+  {
+    "scenario": "Complete Hallucination - No Context Support",
+    "question": "What is the chemical formula for water?",
+    "context": [
+      "The Great Barrier Reef is located in Australia.",
+      "Coffee beans are grown in tropical climates.",
+      "Shakespeare wrote many famous plays."
+    ],
+    "answer": "The chemical formula for water is H2O, which consists of two hydrogen atoms bonded to one oxygen atom. Water is essential for all known forms of life and covers about 71% of Earth's surface.",
+    "ground_truth": "The chemical formula for water is H2O."
+  }
+] 

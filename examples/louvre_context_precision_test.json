@@ -27,5 +27,27 @@
       "Tourism is important to New York's economy."
     ],
     "answer": "The Empire State Building is 381 meters tall."
+  },
+  {
+    "question": "What is the population of Tokyo?",
+    "context": [
+      "Tokyo has beautiful cherry blossoms in spring.",
+      "Mount Fuji is visible from Tokyo on clear days.",
+      "Tokyo is the capital city of Japan with 14 million people.",
+      "Japanese cuisine is popular worldwide.",
+      "The Tokyo Olympics were held in 2021."
+    ],
+    "answer": "Tokyo has a population of 14 million people."
+  },
+  {
+    "question": "When was the Great Wall of China built?",
+    "context": [
+      "China has many tourist attractions.",
+      "The Great Wall stretches over 13,000 miles.",
+      "Beijing is the capital of China.",
+      "The Forbidden City is in Beijing.",
+      "The Great Wall of China was built over several dynasties, primarily during the Ming Dynasty (1368-1644)."
+    ],
+    "answer": "The Great Wall of China was built primarily during the Ming Dynasty from 1368 to 1644."
   }
 ] 

@@ -1,0 +1,103 @@
+[
+  {
+    "scenario": "Chunks 1,3 relevant out of 5 - Mixed Early/Late Precision",
+    "question": "What are the main ingredients in pizza dough?",
+    "context": [
+      "Pizza dough typically contains flour, water, yeast, salt, and olive oil.",
+      "Italy is famous for its wine regions.",
+      "The basic pizza dough recipe requires kneading for 10 minutes.",
+      "Rome has many ancient monuments.",
+      "Gelato is a popular Italian dessert."
+    ],
+    "answer": "Pizza dough contains flour, water, yeast, salt, and olive oil, and requires kneading."
+  },
+  {
+    "scenario": "Only Chunk 5 relevant - Very Poor Early Precision", 
+    "question": "How do solar panels generate electricity?",
+    "context": [
+      "Wind turbines are another form of renewable energy.",
+      "Coal is a fossil fuel used for electricity generation.",
+      "Nuclear power plants generate electricity through fission.",
+      "Hydroelectric dams use flowing water for power.",
+      "Solar panels convert sunlight directly into electricity using photovoltaic cells."
+    ],
+    "answer": "Solar panels generate electricity by converting sunlight into electrical energy using photovoltaic cells."
+  },
+  {
+    "scenario": "Chunks 2,4,5 relevant out of 5 - Poor Start, Good Finish",
+    "question": "What are the health benefits of exercise?",
+    "context": [
+      "Fast food is often high in calories and sodium.",
+      "Regular exercise improves cardiovascular health and reduces disease risk.",
+      "Television viewing has increased significantly in recent decades.", 
+      "Physical activity helps maintain healthy weight and strengthens muscles.",
+      "Exercise also improves mental health by reducing stress and anxiety."
+    ],
+    "answer": "Exercise improves cardiovascular health, helps maintain weight, strengthens muscles, and reduces stress."
+  },
+  {
+    "scenario": "All chunks irrelevant - Complete Retrieval Failure",
+    "question": "What is the chemical formula for water?",
+    "context": [
+      "The Great Barrier Reef is located in Australia.",
+      "Coffee beans are grown in tropical climates.",
+      "Shakespeare wrote many famous plays.",
+      "The stock market can be volatile.",
+      "Basketball is played with two teams of five players."
+    ],
+    "answer": "The chemical formula for water is H2O."
+  },
+  {
+    "scenario": "All chunks relevant - Perfect Retrieval",
+    "question": "What are the primary colors?",
+    "context": [
+      "Red is one of the three primary colors.",
+      "Blue is considered a primary color in traditional color theory.",
+      "Yellow completes the set of primary colors.",
+      "Primary colors cannot be created by mixing other colors.",
+      "All other colors can be made by combining primary colors."
+    ],
+    "answer": "The primary colors are red, blue, and yellow."
+  },
+  {
+    "scenario": "Chunks 1,2 relevant out of 7 - Good Early, Massive Noise Tail",
+    "question": "What is photosynthesis?",
+    "context": [
+      "Photosynthesis is the process by which plants convert sunlight into energy.",
+      "Plants use chlorophyll to capture light energy and produce glucose.",
+      "Dogs are popular pets in many households.",
+      "The internet has revolutionized communication.",
+      "Baseball is America's pastime sport.",
+      "Mountains are formed by tectonic plate movements.",
+      "Smartphones have become ubiquitous in modern society."
+    ],
+    "answer": "Photosynthesis is how plants convert sunlight into energy using chlorophyll to produce glucose."
+  },
+  {
+    "scenario": "Chunks 3,6,7 relevant out of 7 - Mixed Pattern",
+    "question": "What causes earthquakes?",
+    "context": [
+      "Weather patterns are influenced by ocean currents.",
+      "Music has been an important part of human culture.",
+      "Earthquakes are caused by the movement of tectonic plates.",
+      "Social media platforms have changed how we communicate.",
+      "Cooking techniques vary across different cultures.",
+      "When tectonic plates shift, they release energy as seismic waves.",
+      "The magnitude of earthquakes is measured on the Richter scale."
+    ],
+    "answer": "Earthquakes are caused by tectonic plate movement that releases energy as seismic waves."
+  },
+  {
+    "scenario": "Only Chunk 1 relevant out of 6 - Perfect Early, Complete Noise",
+    "question": "What is the speed of light?",
+    "context": [
+      "The speed of light in a vacuum is approximately 299,792,458 meters per second.",
+      "Cats are independent animals that make good pets.",
+      "Pizza was invented in Italy.",
+      "The ocean covers about 71% of Earth's surface.",
+      "Chess is a strategic board game.",
+      "Rain forests are important for biodiversity."
+    ],
+    "answer": "The speed of light is approximately 299,792,458 meters per second."
+  }
+]

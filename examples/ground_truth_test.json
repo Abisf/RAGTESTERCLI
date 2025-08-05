@@ -1,0 +1,9 @@
+{
+  "question": "When was the Eiffel Tower completed and who designed it?",
+  "context": [
+    "The Eiffel Tower was completed in 1889 for the World's Fair in Paris.",
+    "Gustave Eiffel was the engineer who designed the tower."
+  ],
+  "answer": "The Eiffel Tower was completed in 1889 and was designed by Gustave Eiffel. It was built as the entrance arch for the 1889 World's Fair and stands 300 meters tall.",
+  "ground_truth": "The Eiffel Tower was completed in 1889 and was designed by Gustave Eiffel for the 1889 World's Fair."
+}

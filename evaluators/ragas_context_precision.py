@@ -205,9 +205,25 @@ Answer only 'YES' or 'NO':"""
                 precision_k = true_positives / k
                 precision_at_k.append(precision_k)
             
-            # Step 3: Return mean precision
-            mean_precision = sum(precision_at_k) / len(precision_at_k)
-            return round(mean_precision, 3)
+            # Step 3: Calculate weighted context precision (RAGAS formula)
+            # Context Precision = Σ(Precision@k × v_k) / Σ(v_k)
+            # where v_k = 1 if item at rank k is relevant, 0 otherwise
+            weighted_sum = 0.0
+            total_relevant = 0
+            
+            for k in range(len(relevance_scores)):
+                if relevance_scores[k]:  # v_k = 1 if relevant
+                    weighted_sum += precision_at_k[k]  # Precision@(k+1) × 1
+                    total_relevant += 1
+            
+            # If no relevant chunks, return 0
+            if total_relevant == 0:
+                context_precision = 0.0
+            else:
+                context_precision = weighted_sum / total_relevant
+            
+            # For compatibility, return the RAGAS context precision (but could return both)
+            return round(context_precision, 3)
             
         except Exception as e:
             print(f"Fallback evaluation failed: {e}")
@@ -277,7 +293,30 @@ Answer only 'YES' or 'NO':"""
                     "precision": round(precision_k, 3)
                 })
             
-            mean_precision = sum(p["precision"] for p in precision_at_k) / len(precision_at_k)
+            # Calculate weighted context precision (RAGAS formula)
+            # Context Precision = Σ(Precision@k × v_k) / Σ(v_k)
+            weighted_sum = 0.0
+            total_relevant = 0
+            
+            for i, chunk_data in enumerate(chunk_analysis):
+                if chunk_data["relevant"]:  # v_k = 1 if relevant
+                    weighted_sum += precision_at_k[i]["precision"]  # Precision@(k+1) × 1
+                    total_relevant += 1
+            
+            # If no relevant chunks, return 0
+            if total_relevant == 0:
+                context_precision = 0.0
+            else:
+                context_precision = weighted_sum / total_relevant
+            
+            # Generate enhanced diagnostic insights
+            diagnostic_insights = self._generate_precision_insights(chunk_analysis, context_precision)
+            
+            # Generate retrieval quality analysis
+            retrieval_analysis = self._analyze_retrieval_quality(chunk_analysis, precision_at_k)
+            
+            # Calculate simple (unranked) context precision for noise analysis
+            simple_context_precision = true_positives / len(context) if context else 0.0
             
             return {
                 "question": question,
@@ -287,11 +326,262 @@ Answer only 'YES' or 'NO':"""
                 "precision_at_k": precision_at_k,
                 "relevant_chunks": true_positives,
                 "total_chunks": len(context),
-                "mean_precision": round(mean_precision, 3)
+                
+                # RAGAS Context Precision (Average Precision - ranking quality)
+                "ragas_context_precision": round(context_precision, 3),
+                
+                # Simple Context Precision (relevant/total - noise analysis)  
+                "simple_context_precision": round(simple_context_precision, 3),
+                
+                # Enhanced diagnostic information
+                "retrieval_quality_analysis": retrieval_analysis,
+                "diagnostic_insights": diagnostic_insights,
+                "summary_statistics": {
+                    "ragas_context_precision": context_precision,
+                    "simple_context_precision": simple_context_precision,
+                    "irrelevant_chunks": len(context) - true_positives,
+                    "noise_rate": (len(context) - true_positives) / len(context) if context else 0.0,
+                    "early_precision": precision_at_k[0]["precision"] if precision_at_k else 0.0,
+                    "late_precision": precision_at_k[-1]["precision"] if precision_at_k else 0.0,
+                    "calculation_methods": {
+                        "ragas": "average_precision_weighted_by_relevance",
+                        "simple": "relevant_chunks_divided_by_total"
+                    }
+                },
+                
+                # Summary verdict for casual users
+                "summary_verdict": self._generate_summary_verdict(chunk_analysis, context_precision, simple_context_precision),
+                
+                # Structured action recommendations
+                "action_recommendations": self._generate_action_recommendations(chunk_analysis, context_precision, simple_context_precision)
             }
             
         except Exception as e:
             return {
                 "error": f"Analysis failed: {e}",
                 "mean_precision": 0.5
-            } 
+            }
+    
+    def _generate_precision_insights(self, chunk_analysis: list, mean_precision: float) -> Dict[str, Any]:
+        """Generate actionable diagnostic insights for context precision."""
+        insights = {
+            "primary_issues": [],
+            "recommendations": [],
+            "severity": "low",
+            "specific_problems": []
+        }
+        
+        if not chunk_analysis:
+            return insights
+        
+        irrelevant_chunks = [c for c in chunk_analysis if not c["relevant"]]
+        
+        # Analyze irrelevant chunks for patterns
+        if len(irrelevant_chunks) > 0:
+            insights["specific_problems"] = [
+                {
+                    "chunk_number": chunk["chunk_number"],
+                    "chunk_text": chunk["chunk_text"][:100] + "..." if len(chunk["chunk_text"]) > 100 else chunk["chunk_text"],
+                    "issue": "Irrelevant to question/answer"
+                }
+                for chunk in irrelevant_chunks
+            ]
+        
+        # Generate recommendations based on precision score
+        if mean_precision < 0.3:
+            insights["primary_issues"].append("Critical precision failure - majority of chunks irrelevant")
+            insights["recommendations"].extend([
+                "Review retrieval similarity thresholds - too permissive",
+                "Improve query formulation for more targeted retrieval",
+                "Consider semantic reranking to filter irrelevant chunks",
+                "Evaluate embedding model quality for domain"
+            ])
+            insights["severity"] = "critical"
+            
+        elif mean_precision < 0.5:
+            insights["primary_issues"].append("Low precision - significant noise in retrieval")
+            insights["recommendations"].extend([
+                "Tighten similarity thresholds for retrieval",
+                "Add reranking stage to filter irrelevant content",
+                "Review query expansion strategies"
+            ])
+            insights["severity"] = "high"
+            
+        elif mean_precision < 0.7:
+            insights["primary_issues"].append("Moderate precision issues - some irrelevant chunks")
+            insights["recommendations"].extend([
+                "Fine-tune retrieval parameters",
+                "Consider hybrid retrieval strategies (keyword + semantic)"
+            ])
+            insights["severity"] = "medium"
+        
+        # Analyze position-based patterns (early precision analysis)
+        if len(chunk_analysis) > 2:
+            # Check early precision (top-3 chunks)
+            early_relevant = sum(1 for c in chunk_analysis[:3] if c["relevant"])
+            early_irrelevant = sum(1 for c in chunk_analysis[:3] if not c["relevant"])
+            
+            # Good early precision means relevant chunks appear in top positions
+            if chunk_analysis[0]["relevant"]:  # First chunk is relevant
+                if early_irrelevant >= 2:
+                    insights["primary_issues"].append("Good early precision but noisy tail")
+                    insights["recommendations"].append("Keep top results - prune or rerank the rest to suppress noise")
+            else:  # First chunk is not relevant
+                insights["primary_issues"].append("Poor early precision - top chunks are irrelevant") 
+                insights["recommendations"].append("Prioritize fixing ranking algorithm - top results should be most relevant")
+        
+        return insights
+    
+    def _analyze_retrieval_quality(self, chunk_analysis: list, precision_at_k: list) -> Dict[str, Any]:
+        """Analyze retrieval quality patterns and trends."""
+        if not chunk_analysis or not precision_at_k:
+            return {"error": "Insufficient data for retrieval quality analysis"}
+        
+        try:
+            quality_analysis = {
+                "precision_trend": "unknown",
+                "ranking_quality": "unknown",
+                "position_analysis": [],
+                "noise_pattern": "unknown"
+            }
+            
+            # Analyze precision trend
+            if len(precision_at_k) >= 3:
+                early_precision = precision_at_k[0]["precision"]
+                mid_precision = precision_at_k[len(precision_at_k)//2]["precision"]
+                late_precision = precision_at_k[-1]["precision"]
+                
+                if late_precision > mid_precision > early_precision:
+                    quality_analysis["precision_trend"] = "improving"
+                elif early_precision > mid_precision > late_precision:
+                    quality_analysis["precision_trend"] = "degrading"
+                else:
+                    quality_analysis["precision_trend"] = "stable"
+            
+            # Analyze ranking quality
+            relevant_positions = [i for i, chunk in enumerate(chunk_analysis) if chunk["relevant"]]
+            if relevant_positions:
+                avg_relevant_position = sum(relevant_positions) / len(relevant_positions)
+                total_positions = len(chunk_analysis)
+                
+                if avg_relevant_position < total_positions * 0.3:
+                    quality_analysis["ranking_quality"] = "good_early_ranking"
+                elif avg_relevant_position > total_positions * 0.7:
+                    quality_analysis["ranking_quality"] = "poor_early_ranking"
+                else:
+                    quality_analysis["ranking_quality"] = "moderate_ranking"
+            
+            # Position-by-position analysis
+            for i, (chunk, precision) in enumerate(zip(chunk_analysis, precision_at_k)):
+                quality_analysis["position_analysis"].append({
+                    "position": i + 1,
+                    "relevant": chunk["relevant"],
+                    "precision_at_position": precision["precision"],
+                    "impact": "positive" if chunk["relevant"] else "negative"
+                })
+            
+            # Analyze noise patterns
+            irrelevant_count = sum(1 for chunk in chunk_analysis if not chunk["relevant"])
+            if irrelevant_count == 0:
+                quality_analysis["noise_pattern"] = "no_noise"
+            elif irrelevant_count < len(chunk_analysis) * 0.3:
+                quality_analysis["noise_pattern"] = "low_noise"
+            elif irrelevant_count < len(chunk_analysis) * 0.7:
+                quality_analysis["noise_pattern"] = "moderate_noise"
+            else:
+                quality_analysis["noise_pattern"] = "high_noise"
+            
+            return quality_analysis
+            
+        except Exception as e:
+            return {"error": f"Retrieval quality analysis failed: {e}"}
+    
+    def _generate_summary_verdict(self, chunk_analysis: list, ragas_precision: float, simple_precision: float) -> str:
+        """Generate a concise summary verdict for casual users."""
+        if not chunk_analysis:
+            return "❓ No chunks to analyze"
+        
+        # Identify relevant chunks
+        relevant_chunks = [i+1 for i, chunk in enumerate(chunk_analysis) if chunk["relevant"]]
+        irrelevant_chunks = [i+1 for i, chunk in enumerate(chunk_analysis) if not chunk["relevant"]]
+        
+        # Generate verdict based on pattern
+        if ragas_precision >= 0.8 and simple_precision >= 0.8:
+            return "✅ Excellent retrieval: good ranking AND low noise"
+        elif ragas_precision >= 0.8 and simple_precision < 0.5:
+            if len(relevant_chunks) > 0 and relevant_chunks[0] == 1:
+                if len(irrelevant_chunks) > 2:
+                    chunk_range = f"{irrelevant_chunks[0]}–{irrelevant_chunks[-1]}" if len(irrelevant_chunks) > 1 else str(irrelevant_chunks[0])
+                    return f"✅ Good ranking early; ⚠️ noisy tail — prune chunks {chunk_range}"
+                else:
+                    return "✅ Good ranking with minor noise"
+            else:
+                return "⚠️ Good overall ranking but some noise present"
+        elif ragas_precision < 0.5 and simple_precision >= 0.8:
+            return "⚠️ Clean content but poor ranking — relevant chunks appear late"
+        else:
+            return "❌ Poor retrieval: both ranking and noise issues need fixing"
+    
+    def _generate_action_recommendations(self, chunk_analysis: list, ragas_precision: float, simple_precision: float) -> dict:
+        """Generate structured action recommendations."""
+        if not chunk_analysis:
+            return {"action": "none", "reason": "no_chunks_to_analyze"}
+        
+        recommendations = {
+            "action": "none",
+            "target_ranks": [],
+            "keep_ranks": [],
+            "reason": "",
+            "confidence": "low"
+        }
+        
+        # Identify relevant and irrelevant chunk positions
+        relevant_positions = [i+1 for i, chunk in enumerate(chunk_analysis) if chunk["relevant"]]
+        irrelevant_positions = [i+1 for i, chunk in enumerate(chunk_analysis) if not chunk["relevant"]]
+        
+        # Generate recommendations based on patterns
+        if ragas_precision >= 0.8 and simple_precision < 0.5:
+            # Good ranking but noisy - recommend pruning
+            if len(relevant_positions) > 0 and relevant_positions[0] <= 2:  # Early relevant chunks
+                recommendations.update({
+                    "action": "prune",
+                    "target_ranks": irrelevant_positions,
+                    "keep_ranks": relevant_positions,
+                    "reason": "high_noise_with_good_early_ranking",
+                    "confidence": "high"
+                })
+            else:
+                recommendations.update({
+                    "action": "rerank_and_prune",
+                    "target_ranks": irrelevant_positions,
+                    "reason": "noise_with_mixed_ranking",
+                    "confidence": "medium"
+                })
+        
+        elif ragas_precision < 0.5 and simple_precision >= 0.8:
+            # Poor ranking but clean content - recommend reranking
+            recommendations.update({
+                "action": "rerank",
+                "target_ranks": list(range(1, len(chunk_analysis) + 1)),
+                "reason": "poor_ranking_with_clean_content",
+                "confidence": "high"
+            })
+        
+        elif ragas_precision < 0.5 and simple_precision < 0.5:
+            # Both poor - recommend full overhaul
+            recommendations.update({
+                "action": "overhaul_retrieval",
+                "target_ranks": irrelevant_positions,
+                "reason": "poor_ranking_and_high_noise",
+                "confidence": "high"
+            })
+        
+        else:
+            # Good performance overall
+            recommendations.update({
+                "action": "maintain",
+                "reason": "good_performance",
+                "confidence": "high"
+            })
+        
+        return recommendations 

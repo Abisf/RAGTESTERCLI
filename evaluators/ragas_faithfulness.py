@@ -191,10 +191,12 @@ Answer:"""
         """
         Get detailed claim-by-claim analysis for transparency.
         
-        Returns:
-        - extracted_claims: List of claims found in the answer
-        - claim_verification: Each claim with support status
-        - faithfulness_score: Final calculated score
+        Returns comprehensive analysis including:
+        - Step-by-step claim verification process
+        - Formula explanations and calculations
+        - Context utilization analysis
+        - Detailed diagnostic insights
+        - Summary verdict and action recommendations
         """
         from llm_client import LLMClient
         
@@ -248,9 +250,10 @@ Claims:"""
                 if clean_claim:  # Only add non-empty claims
                     claims.append(clean_claim)
             
-            # Verify each claim
+            # Verify each claim with detailed process
             claim_analysis = []
             supported_claims = 0
+            verification_steps = []
             
             for i, claim in enumerate(claims, 1):
                 verification_prompt = f"""
@@ -268,28 +271,277 @@ Answer:"""
                 if is_supported:
                     supported_claims += 1
                 
+                # Create detailed verification step
+                verification_step = {
+                    "step_number": i,
+                    "claim": claim,
+                    "verification_prompt": verification_prompt,
+                    "verification_response": verification_response,
+                    "is_supported": is_supported,
+                    "support_status": "SUPPORTED" if is_supported else "NOT SUPPORTED"
+                }
+                verification_steps.append(verification_step)
+                
                 claim_analysis.append({
                     "claim_number": i,
                     "claim_text": claim,
                     "supported": is_supported,
-                    "verification_response": verification_response
+                    "verification_response": verification_response,
+                    "verification_step": verification_step
                 })
             
-            faithfulness_score = supported_claims / len(claims) if claims else 0.0
+            # Calculate faithfulness score with detailed formula
+            total_claims = len(claims)
+            faithfulness_score = supported_claims / total_claims if total_claims > 0 else 0.0
+            unsupported_claims = total_claims - supported_claims
+            
+            # Calculate additional metrics
+            support_rate = supported_claims / total_claims if total_claims > 0 else 0.0
+            unsupported_rate = unsupported_claims / total_claims if total_claims > 0 else 0.0
+            
+            # Generate enhanced diagnostic insights
+            diagnostic_insights = self._generate_faithfulness_insights(claim_analysis, faithfulness_score)
+            
+            # Generate context usage analysis
+            context_usage = self._analyze_context_usage(claims, context, client)
+            
+            # Generate summary verdict
+            summary_verdict = self._generate_summary_verdict(faithfulness_score, supported_claims, total_claims)
+            
+            # Generate action recommendations
+            action_recommendations = self._generate_action_recommendations(claim_analysis, context_usage, faithfulness_score)
             
             return {
                 "question": question,
                 "answer": answer,
                 "context": context,
-                "extracted_claims": claims,
-                "claim_analysis": claim_analysis,
+                "total_claims": total_claims,
                 "supported_claims": supported_claims,
-                "total_claims": len(claims),
-                "faithfulness_score": round(faithfulness_score, 3)
+                "unsupported_claims": unsupported_claims,
+                "faithfulness_score": faithfulness_score,
+                "support_rate": support_rate,
+                "unsupported_rate": unsupported_rate,
+                
+                # Detailed verification process
+                "verification_steps": verification_steps,
+                "claim_analysis": claim_analysis,
+                
+                # Formula and calculation details
+                "formula_explanation": {
+                    "faithfulness_formula": "Supported Claims / Total Claims",
+                    "calculation": f"{supported_claims} / {total_claims} = {faithfulness_score:.3f}",
+                    "interpretation": f"{faithfulness_score:.1%} of claims are supported by context"
+                },
+                
+                # Context usage analysis
+                "context_usage_analysis": context_usage,
+                
+                # Diagnostic insights
+                "diagnostic_insights": diagnostic_insights,
+                
+                # Summary and recommendations
+                "summary_verdict": summary_verdict,
+                "action_recommendations": action_recommendations,
+                
+                # Additional metrics
+                "summary_statistics": {
+                    "support_rate": support_rate,
+                    "unsupported_rate": unsupported_rate,
+                    "claim_density": total_claims / len(answer.split()) if answer else 0.0,
+                    "average_claim_length": sum(len(claim.split()) for claim in claims) / total_claims if total_claims > 0 else 0.0
+                }
             }
             
         except Exception as e:
             return {
-                "error": f"Analysis failed: {e}",
-                "faithfulness_score": 0.5
-            } 
+                "error": f"Detailed analysis failed: {e}",
+                "faithfulness_score": 0.0
+            }
+    
+    def _generate_faithfulness_insights(self, claim_analysis: list, faithfulness_score: float) -> Dict[str, Any]:
+        """Generate actionable diagnostic insights for faithfulness."""
+        insights = {
+            "primary_issues": [],
+            "recommendations": [],
+            "severity": "low",
+            "specific_problems": []
+        }
+        
+        if not claim_analysis:
+            return insights
+        
+        unsupported_claims = [c for c in claim_analysis if not c["supported"]]
+        
+        # Analyze unsupported claims for patterns
+        if len(unsupported_claims) > 0:
+            insights["specific_problems"] = [
+                {
+                    "claim_number": claim["claim_number"],
+                    "claim_text": claim["claim_text"],
+                    "issue": "Not supported by retrieved context"
+                }
+                for claim in unsupported_claims
+            ]
+        
+        # Generate recommendations based on faithfulness score
+        if faithfulness_score < 0.3:
+            insights["primary_issues"].append("Critical faithfulness failure - majority of claims unsupported")
+            insights["recommendations"].extend([
+                "Review prompt to emphasize grounding in provided context",
+                "Check if retrieval is providing sufficient relevant information",
+                "Consider post-processing to filter ungrounded claims"
+            ])
+            insights["severity"] = "critical"
+            
+        elif faithfulness_score < 0.5:
+            insights["primary_issues"].append("Low faithfulness - significant unsupported claims")
+            insights["recommendations"].extend([
+                "Improve prompt engineering for better context adherence",
+                "Evaluate retrieval quality and coverage"
+            ])
+            insights["severity"] = "high"
+            
+        elif faithfulness_score < 0.7:
+            insights["primary_issues"].append("Moderate faithfulness issues")
+            insights["recommendations"].append("Fine-tune generation to better utilize provided context")
+            insights["severity"] = "medium"
+        
+        return insights
+    
+    def _analyze_context_usage(self, claims: list, context: list, client) -> Dict[str, Any]:
+        """Analyze how well context chunks are utilized by checking which claims they support."""
+        try:
+            chunk_analysis = []
+            
+            for chunk_idx, chunk_text in enumerate(context):
+                chunk_data = {
+                    "chunk_number": chunk_idx + 1,
+                    "chunk_text": chunk_text,
+                    "supporting_claims": [],
+                    "usage_status": "unused",
+                    "relevance_score": 0.0
+                }
+                
+                # Check which claims this chunk supports
+                supporting_claims = 0
+                for claim_idx, claim in enumerate(claims):
+                    verification_prompt = f"""
+Can the following claim be supported by this specific context chunk? Answer only 'YES' or 'NO'.
+
+Context Chunk: {chunk_text}
+
+Claim: {claim}
+
+Answer:"""
+                    
+                    verification_response = client.generate_response(verification_prompt).strip().upper()
+                    is_supported = verification_response.startswith('YES')
+                    
+                    if is_supported:
+                        chunk_data["supporting_claims"].append({
+                            "claim_number": claim_idx + 1,
+                            "claim_text": claim
+                        })
+                        supporting_claims += 1
+                
+                # Determine usage status
+                if supporting_claims > 0:
+                    chunk_data["usage_status"] = f"supports_{supporting_claims}_claims"
+                    chunk_data["relevance_score"] = supporting_claims / len(claims) if claims else 0.0
+                else:
+                    chunk_data["usage_status"] = "unused_or_irrelevant"
+                
+                chunk_analysis.append(chunk_data)
+            
+            return {
+                "total_chunks": len(context),
+                "chunks": chunk_analysis,
+                "summary": self._summarize_context_usage(chunk_analysis)
+            }
+            
+        except Exception as e:
+            return {
+                "error": f"Context usage analysis failed: {e}",
+                "chunks": []
+            }
+    
+    def _summarize_context_usage(self, chunks: list) -> Dict[str, Any]:
+        """Generate summary statistics for context usage analysis."""
+        if not chunks:
+            return {}
+        
+        total_chunks = len(chunks)
+        used_chunks = sum(1 for c in chunks if c["usage_status"] != "unused_or_irrelevant")
+        unused_chunks = total_chunks - used_chunks
+        
+        total_claims_supported = sum(len(c["supporting_claims"]) for c in chunks)
+        avg_relevance = sum(c["relevance_score"] for c in chunks) / total_chunks if total_chunks > 0 else 0.0
+        
+        return {
+            "total_chunks": total_chunks,
+            "used_chunks": used_chunks,
+            "unused_chunks": unused_chunks,
+            "context_utilization_rate": used_chunks / total_chunks if total_chunks > 0 else 0.0,
+            "total_claims_supported": total_claims_supported,
+            "average_relevance_score": avg_relevance
+        }
+    
+    def _generate_summary_verdict(self, faithfulness_score: float, supported_claims: int, total_claims: int) -> str:
+        """Generate a concise, human-readable summary verdict."""
+        if faithfulness_score >= 0.9:
+            return f"✅ Excellent faithfulness ({faithfulness_score:.1%}) - {supported_claims}/{total_claims} claims supported"
+        elif faithfulness_score >= 0.7:
+            return f"✅ Good faithfulness ({faithfulness_score:.1%}) - {supported_claims}/{total_claims} claims supported"
+        elif faithfulness_score >= 0.5:
+            return f"⚠️  Moderate faithfulness ({faithfulness_score:.1%}) - {supported_claims}/{total_claims} claims supported"
+        elif faithfulness_score >= 0.3:
+            return f"❌ Poor faithfulness ({faithfulness_score:.1%}) - {supported_claims}/{total_claims} claims supported"
+        else:
+            return f"❌ Very poor faithfulness ({faithfulness_score:.1%}) - {supported_claims}/{total_claims} claims supported"
+    
+    def _generate_action_recommendations(self, claim_analysis: list, context_usage: Dict[str, Any], faithfulness_score: float) -> Dict[str, Any]:
+        """Generate structured action recommendations based on analysis."""
+        recommendations = {
+            "action": "none",
+            "reason": "no_issues_detected",
+            "confidence": "low",
+            "specific_actions": []
+        }
+        
+        # Analyze claim patterns
+        unsupported_claims = [c for c in claim_analysis if not c["supported"]]
+        supported_claims = [c for c in claim_analysis if c["supported"]]
+        
+        # Analyze context usage
+        context_summary = context_usage.get("summary", {})
+        utilization_rate = context_summary.get("context_utilization_rate", 0.0)
+        
+        if faithfulness_score < 0.5:
+            if len(unsupported_claims) > len(supported_claims):
+                recommendations["action"] = "improve_generation"
+                recommendations["reason"] = "high_unsupported_claims"
+                recommendations["confidence"] = "high"
+                recommendations["specific_actions"].append("Review prompt engineering to emphasize grounding")
+                recommendations["specific_actions"].append("Add fact-checking constraints to generation")
+            else:
+                recommendations["action"] = "improve_retrieval"
+                recommendations["reason"] = "insufficient_context_support"
+                recommendations["confidence"] = "medium"
+                recommendations["specific_actions"].append("Expand retrieval to include more relevant context")
+                recommendations["specific_actions"].append("Improve query formulation for better context matching")
+        
+        elif utilization_rate < 0.5:
+            recommendations["action"] = "optimize_context"
+            recommendations["reason"] = "low_context_utilization"
+            recommendations["confidence"] = "medium"
+            recommendations["specific_actions"].append("Improve context relevance through better retrieval")
+            recommendations["specific_actions"].append("Consider context reranking to prioritize useful chunks")
+        
+        elif faithfulness_score >= 0.8:
+            recommendations["action"] = "maintain"
+            recommendations["reason"] = "good_faithfulness"
+            recommendations["confidence"] = "high"
+            recommendations["specific_actions"].append("Current approach is working well")
+            recommendations["specific_actions"].append("Monitor for consistency across different queries")
+        
+        return recommendations 

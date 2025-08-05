@@ -1,0 +1,11 @@
+[
+  {
+    "question": "What are the features of the Louvre Museum?",
+    "context": [
+      "The Louvre Museum is located in Paris, France. It is open from 9 AM to 6 PM daily. The museum houses the famous Mona Lisa painting. The Louvre was originally a royal palace before becoming a museum.",
+      "The museum has over 35,000 works of art. Visitors can see ancient Egyptian artifacts and Greek sculptures. The Louvre is one of the largest art museums in the world.",
+      "The museum is closed on Tuesdays. Admission is free for EU citizens under 26. The Louvre has a glass pyramid entrance designed by I.M. Pei."
+    ],
+    "answer": "The Louvre Museum is located in Paris and is open from 9 AM to 6 PM daily. It houses the famous Mona Lisa painting and has over 35,000 works of art. The museum was originally a royal palace and has a glass pyramid entrance. The Louvre is the largest art museum in the world and offers free admission to all visitors. The museum also has a famous restaurant on the top floor with excellent views of Paris."
+  }
+] 

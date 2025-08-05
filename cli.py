@@ -206,18 +206,107 @@ def analyze(
                 typer.echo(f"Error: {analysis['error']}")
                 continue
             
-            typer.echo("Claim Analysis:")
-            for claim_data in analysis['claim_analysis']:
-                status = "✓ SUPPORTED" if claim_data['supported'] else "✗ NOT SUPPORTED"
-                typer.echo(f"  Claim {claim_data['claim_number']}: {claim_data['claim_text']}")
-                typer.echo(f"    Status: {status}")
+            # Display formula explanation
+            if 'formula_explanation' in analysis:
+                formula = analysis['formula_explanation']
+                typer.echo("📊 Faithfulness Formula:")
+                typer.echo(f"  {formula['faithfulness_formula']}")
+                typer.echo(f"  Calculation: {formula['calculation']}")
+                typer.echo(f"  Interpretation: {formula['interpretation']}")
+                typer.echo()
             
-            typer.echo()
+            # Display step-by-step verification process
+            if 'verification_steps' in analysis:
+                typer.echo("🔍 Claim Analysis:")
+                for step in analysis['verification_steps']:
+                    status_icon = "✓" if step['is_supported'] else "✗"
+                    status_text = "SUPPORTED" if step['is_supported'] else "NOT SUPPORTED"
+                    typer.echo(f"  {status_icon} Claim {step['step_number']}: {step['claim']}")
+                    typer.echo(f"    Status: {status_text}")
+                    typer.echo(f"    Verification: {step['verification_response']}")
+                    
+                    # Add brief context explanation
+                    if step['is_supported']:
+                        typer.echo(f"    Context: Found supporting evidence in retrieved chunks")
+                    else:
+                        typer.echo(f"    Context: No supporting evidence found in retrieved chunks")
+                    typer.echo()
+            
+            # Display enhanced context usage analysis
+            if 'context_usage_analysis' in analysis and 'chunks' in analysis['context_usage_analysis']:
+                chunks = analysis['context_usage_analysis']['chunks']
+                typer.echo("Context Usage Analysis:")
+                for chunk in chunks:
+                    usage_icon = "✓" if chunk['usage_status'] != 'unused_or_irrelevant' else "✗"
+                    typer.echo(f"  {usage_icon} Chunk {chunk['chunk_number']}: {chunk['usage_status'].replace('_', ' ').title()}")
+                    typer.echo(f"    Text: {chunk['chunk_text'][:80]}{'...' if len(chunk['chunk_text']) > 80 else ''}")
+                    if chunk['supporting_claims']:
+                        typer.echo(f"    Supporting: {len(chunk['supporting_claims'])} claims")
+                typer.echo()
+            
+            # Display diagnostic insights
+            if 'diagnostic_insights' in analysis:
+                insights = analysis['diagnostic_insights']
+                typer.echo(f"Diagnostic Insights (Severity: {insights.get('severity', 'unknown').upper()}):")
+                if insights.get('primary_issues'):
+                    typer.echo("  Issues Found:")
+                    for issue in insights['primary_issues']:
+                        typer.echo(f"    • {issue}")
+                if insights.get('recommendations'):
+                    typer.echo("  Recommendations:")
+                    for rec in insights['recommendations']:
+                        typer.echo(f"    • {rec}")
+                if insights.get('specific_problems'):
+                    typer.echo("  Specific Unsupported Claims:")
+                    for problem in insights['specific_problems']:
+                        typer.echo(f"    • Claim {problem['claim_number']}: {problem['claim_text']}")
+                typer.echo()
+            
+            # Display summary verdict prominently for casual users
+            if 'summary_verdict' in analysis:
+                typer.echo("📋 Summary Verdict:")
+                typer.echo(f"  {analysis['summary_verdict']}")
+                typer.echo()
+            
+            # Display action recommendations
+            if 'action_recommendations' in analysis:
+                action_rec = analysis['action_recommendations']
+                typer.echo("🎯 Action Recommendations:")
+                typer.echo(f"  Action: {action_rec.get('action', 'none').replace('_', ' ').title()}")
+                typer.echo(f"  Reason: {action_rec.get('reason', 'unknown').replace('_', ' ').title()}")
+                typer.echo(f"  Confidence: {action_rec.get('confidence', 'unknown').title()}")
+                if action_rec.get('specific_actions'):
+                    typer.echo("  Specific Actions:")
+                    for action in action_rec['specific_actions']:
+                        typer.echo(f"    • {action}")
+                typer.echo()
+            
             typer.echo(f"Summary:")
             typer.echo(f"  Total Claims: {analysis['total_claims']}")
             typer.echo(f"  Supported Claims: {analysis['supported_claims']}")
-            typer.echo(f"  Faithfulness Score: {analysis['faithfulness_score']}")
-            typer.echo(f"  Formula: {analysis['supported_claims']}/{analysis['total_claims']} = {analysis['faithfulness_score']}")
+            typer.echo(f"  Unsupported Claims: {analysis['unsupported_claims']}")
+            typer.echo(f"  Faithfulness Score: {analysis['faithfulness_score']:.3f}")
+            
+            # Display additional metrics
+            if 'summary_statistics' in analysis:
+                stats = analysis['summary_statistics']
+                typer.echo()
+                typer.echo(f"Additional Metrics:")
+                typer.echo(f"  Support Rate: {stats.get('support_rate', 0.0):.1%}")
+                typer.echo(f"  Unsupported Rate: {stats.get('unsupported_rate', 0.0):.1%}")
+                typer.echo(f"  Claim Density: {stats.get('claim_density', 0.0):.3f} claims/word")
+                typer.echo(f"  Average Claim Length: {stats.get('average_claim_length', 0.0):.1f} words")
+            
+            # Display context usage summary
+            if 'context_usage_analysis' in analysis and 'summary' in analysis['context_usage_analysis']:
+                ctx_summary = analysis['context_usage_analysis']['summary']
+                typer.echo()
+                typer.echo(f"Context Utilization:")
+                typer.echo(f"  Used Chunks: {ctx_summary.get('used_chunks', 0)}/{ctx_summary.get('total_chunks', 0)}")
+                typer.echo(f"  Utilization Rate: {ctx_summary.get('context_utilization_rate', 0.0):.1%}")
+                typer.echo(f"  Total Claims Supported: {ctx_summary.get('total_claims_supported', 0)}")
+                typer.echo(f"  Average Relevance Score: {ctx_summary.get('average_relevance_score', 0.0):.3f}")
+            
             typer.echo()
     
     elif metric == "context_precision":
@@ -247,7 +336,7 @@ def analyze(
             for chunk_data in analysis['chunk_analysis']:
                 status = "✓ RELEVANT" if chunk_data['relevant'] else "✗ NOT RELEVANT"
                 typer.echo(f"  Chunk {chunk_data['chunk_number']}: {status}")
-                typer.echo(f"    Text: {chunk_data['chunk_text']}")
+                typer.echo(f"    Text: {chunk_data['chunk_text'][:80]}{'...' if len(chunk_data['chunk_text']) > 80 else ''}")
             
             typer.echo()
             typer.echo("Precision@k Calculation:")
@@ -255,11 +344,99 @@ def analyze(
                 typer.echo(f"  Precision@{precision_data['position']}: {precision_data['true_positives']}/{precision_data['total_chunks']} = {precision_data['precision']}")
             
             typer.echo()
+            
+            # Display retrieval quality analysis
+            if 'retrieval_quality_analysis' in analysis:
+                quality = analysis['retrieval_quality_analysis']
+                typer.echo("Retrieval Quality Analysis:")
+                typer.echo(f"  Precision Trend: {quality.get('precision_trend', 'unknown').replace('_', ' ').title()}")
+                typer.echo(f"  Ranking Quality: {quality.get('ranking_quality', 'unknown').replace('_', ' ').title()}")
+                typer.echo(f"  Noise Pattern: {quality.get('noise_pattern', 'unknown').replace('_', ' ').title()}")
+                typer.echo()
+            
+            # Display diagnostic insights
+            if 'diagnostic_insights' in analysis:
+                insights = analysis['diagnostic_insights']
+                typer.echo(f"Diagnostic Insights (Severity: {insights.get('severity', 'unknown').upper()}):")
+                if insights.get('primary_issues'):
+                    typer.echo("  Issues Found:")
+                    for issue in insights['primary_issues']:
+                        typer.echo(f"    • {issue}")
+                if insights.get('recommendations'):
+                    typer.echo("  Recommendations:")
+                    for rec in insights['recommendations']:
+                        typer.echo(f"    • {rec}")
+                if insights.get('specific_problems'):
+                    typer.echo("  Irrelevant Chunks:")
+                    for problem in insights['specific_problems']:
+                        typer.echo(f"    • Chunk {problem['chunk_number']}: {problem['chunk_text']}")
+                typer.echo()
+            
+            # Display summary verdict prominently for casual users
+            if 'summary_verdict' in analysis:
+                typer.echo("📋 Summary Verdict:")
+                typer.echo(f"  {analysis['summary_verdict']}")
+                typer.echo()
+            
             typer.echo(f"Summary:")
             typer.echo(f"  Total Chunks: {analysis['total_chunks']}")
             typer.echo(f"  Relevant Chunks: {analysis['relevant_chunks']}")
-            typer.echo(f"  Mean Precision: {analysis['mean_precision']}")
-            typer.echo(f"  Formula: Mean of Precision@k values = {analysis['mean_precision']}")
+            typer.echo()
+            
+            # Display both precision metrics with clear explanations
+            ragas_precision = analysis.get('ragas_context_precision', analysis.get('context_precision', 0.0))
+            simple_precision = analysis.get('simple_context_precision', 0.0)
+            
+            typer.echo(f"Context Precision Metrics:")
+            typer.echo(f"  📊 RAGAS Context Precision: {ragas_precision}")
+            typer.echo(f"      → Measures ranking quality: 'Did we rank relevant chunks early?'")
+            typer.echo(f"      → Formula: Σ(Precision@k × v_k) / Σ(v_k)")
+            typer.echo()
+            typer.echo(f"  🔍 Simple Context Precision: {simple_precision}")
+            typer.echo(f"      → Measures retrieval cleanliness: 'How much retrieved content is useful?'")
+            typer.echo(f"      → Formula: Relevant Chunks / Total Chunks")
+            
+            # Display summary statistics
+            if 'summary_statistics' in analysis:
+                stats = analysis['summary_statistics']
+                typer.echo()
+                typer.echo(f"Additional Metrics:")
+                typer.echo(f"  Noise Rate: {stats.get('noise_rate', 0.0):.1%}")
+                typer.echo(f"  Early Precision: {stats.get('early_precision', 0.0):.3f}")
+                typer.echo(f"  Late Precision: {stats.get('late_precision', 0.0):.3f}")
+            
+            # Interpretive guidance based on both metrics
+            typer.echo()
+            typer.echo("Interpretation:")
+            if ragas_precision >= 0.8 and simple_precision >= 0.8:
+                typer.echo("  ✅ Excellent: Good ranking AND low noise")
+                typer.echo("      → Relevant chunks appear early with minimal irrelevant content")
+            elif ragas_precision >= 0.8 and simple_precision < 0.5:
+                typer.echo("  ⚠️  Good early ranking but noisy retrieval")
+                typer.echo("      → Relevant evidence appears first, but overall retrieval contains significant noise")
+                typer.echo("      → Recommendation: Keep top results, prune or rerank the rest to suppress noise")
+            elif ragas_precision < 0.5 and simple_precision >= 0.8:
+                typer.echo("  ⚠️  Clean retrieval but poor ranking")
+                typer.echo("      → Low noise but relevant chunks appear late in ranking")
+                typer.echo("      → Recommendation: Improve ranking algorithm - top results should be most relevant")
+            else:
+                typer.echo("  ❌ Both ranking and noise need improvement")
+                typer.echo("      → Poor early precision AND high noise content")
+                typer.echo("      → Recommendation: Overhaul both similarity matching and ranking algorithms")
+            
+            # Display action recommendations if available
+            if 'action_recommendations' in analysis:
+                action_rec = analysis['action_recommendations']
+                typer.echo()
+                typer.echo("🎯 Action Recommendations:")
+                typer.echo(f"  Action: {action_rec.get('action', 'none')}")
+                if action_rec.get('target_ranks'):
+                    typer.echo(f"  Target Ranks: {action_rec['target_ranks']}")
+                if action_rec.get('keep_ranks'):
+                    typer.echo(f"  Keep Ranks: {action_rec['keep_ranks']}")
+                typer.echo(f"  Reason: {action_rec.get('reason', 'unknown')}")
+                typer.echo(f"  Confidence: {action_rec.get('confidence', 'unknown')}")
+            
             typer.echo()
     
     elif metric == "hallucination":
@@ -277,27 +454,119 @@ def analyze(
             typer.echo(f"Question: {data.get('question', '')}")
             typer.echo(f"Answer: {data.get('answer', '')}")
             typer.echo(f"Context: {' '.join(data.get('context', []))}")
+            if data.get('ground_truth'):
+                typer.echo(f"Ground Truth: {data.get('ground_truth')}")
             typer.echo()
             
             if "error" in analysis:
                 typer.echo(f"Error: {analysis['error']}")
                 continue
             
-            typer.echo("Hallucination Analysis:")
-            typer.echo(f"  Score: {analysis['hallucination_score']}% hallucination detected")
-            typer.echo(f"  Interpretation: {analysis['interpretation']}")
-            typer.echo()
+            # Display formula explanation
+            if 'formula_explanation' in analysis:
+                formula = analysis['formula_explanation']
+                typer.echo("📊 RAGChecker Hallucination Formula:")
+                typer.echo(f"  {formula['ragchecker_formula']}")
+                typer.echo(f"  Calculation: {formula['calculation']}")
+                typer.echo(f"  Interpretation: {formula['interpretation']}")
+                typer.echo(f"  Explanation: {formula['explanation']}")
+                typer.echo(f"  Evaluation Mode: {formula['evaluation_mode'].replace('_', ' ').title()}")
+                typer.echo()
             
-            typer.echo("Analysis Breakdown:")
-            breakdown = analysis['analysis_breakdown']
-            typer.echo(f"  Response Length: {breakdown.get('response_length', 0)} characters")
-            typer.echo(f"  Context Count: {breakdown.get('context_count', 0)} chunks")
-            typer.echo(f"  Metrics Analyzed: {', '.join(breakdown.get('metrics_analyzed', []))}")
+            # Display enhanced claim-level analysis
+            if 'claim_analysis' in analysis and 'claims' in analysis['claim_analysis']:
+                claims = analysis['claim_analysis']['claims']
+                typer.echo("🔍 Claim-Level Analysis:")
+                for claim in claims:
+                    status_icon = "✓" if claim['classification'] == 'correct_grounded' else "✗"
+                    typer.echo(f"  {status_icon} Claim {claim['claim_number']}: {claim['claim_text']}")
+                    typer.echo(f"    Classification: {claim['classification'].replace('_', ' ').title()}")
+                    if claim['context_support']['supported']:
+                        typer.echo(f"    Context Support: ✓ {claim['context_support']['explanation']}")
+                    else:
+                        typer.echo(f"    Context Support: ✗ {claim['context_support']['explanation']}")
+                    if analysis.get('evaluation_mode') == 'full':
+                        if claim['ground_truth_support']['supported']:
+                            typer.echo(f"    Ground Truth: ✓ {claim['ground_truth_support']['explanation']}")
+                        else:
+                            typer.echo(f"    Ground Truth: ✗ {claim['ground_truth_support']['explanation']}")
+                    typer.echo()
             
-            if 'generator_metrics' in breakdown:
-                gen_metrics = breakdown['generator_metrics']
-                typer.echo(f"  Generator Metrics:")
-                typer.echo(f"    Hallucination Score: {gen_metrics.get('hallucination', 0.0)}%")
+            # Display context analysis
+            if 'context_analysis' in analysis and 'chunks' in analysis['context_analysis']:
+                chunks = analysis['context_analysis']['chunks']
+                typer.echo("Context Usage Analysis:")
+                for chunk in chunks:
+                    usage_icon = "✓" if chunk['usage_analysis'] != 'irrelevant_noise' else "✗"
+                    typer.echo(f"  {usage_icon} Chunk {chunk['chunk_number']}: {chunk['usage_analysis'].replace('_', ' ').title()}")
+                    typer.echo(f"    Text: {chunk['chunk_text'][:80]}{'...' if len(chunk['chunk_text']) > 80 else ''}")
+                    if chunk['supports_claims']:
+                        claim_nums = [str(c['claim_number']) for c in chunk['supports_claims']]
+                        typer.echo(f"    Supports Claims: {', '.join(claim_nums)}")
+                typer.echo()
+            
+            # Display diagnostic insights
+            if 'diagnostic_insights' in analysis:
+                insights = analysis['diagnostic_insights']
+                typer.echo(f"Diagnostic Insights (Severity: {insights.get('severity', 'unknown').upper()}):")
+                if insights.get('primary_issues'):
+                    typer.echo("  Issues Found:")
+                    for issue in insights['primary_issues']:
+                        typer.echo(f"    • {issue}")
+                if insights.get('recommendations'):
+                    typer.echo("  Recommendations:")
+                    for rec in insights['recommendations']:
+                        typer.echo(f"    • {rec}")
+                typer.echo()
+            
+            # Display summary verdict prominently for casual users
+            if 'summary_verdict' in analysis:
+                typer.echo("📋 Summary Verdict:")
+                typer.echo(f"  {analysis['summary_verdict']}")
+                typer.echo()
+            
+            # Display action recommendations
+            if 'action_recommendations' in analysis:
+                action_rec = analysis['action_recommendations']
+                typer.echo("🎯 Action Recommendations:")
+                typer.echo(f"  Action: {action_rec.get('action', 'none').replace('_', ' ').title()}")
+                typer.echo(f"  Reason: {action_rec.get('reason', 'unknown').replace('_', ' ').title()}")
+                typer.echo(f"  Confidence: {action_rec.get('confidence', 'unknown').title()}")
+                if action_rec.get('specific_actions'):
+                    typer.echo("  Specific Actions:")
+                    for action in action_rec['specific_actions']:
+                        typer.echo(f"    • {action}")
+                typer.echo()
+            
+            typer.echo(f"Summary:")
+            typer.echo(f"  Total Claims: {analysis.get('summary_statistics', {}).get('total_claims', 0)}")
+            typer.echo(f"  Hallucinated Claims: {analysis.get('summary_statistics', {}).get('hallucinated_claims', 0)}")
+            typer.echo(f"  Correct Grounded Claims: {analysis.get('summary_statistics', {}).get('correct_grounded_claims', 0)}")
+            typer.echo(f"  Context Supported but Incorrect: {analysis.get('summary_statistics', {}).get('context_supported_but_incorrect', 0)}")
+            typer.echo(f"  Missing Context Evidence: {analysis.get('summary_statistics', {}).get('missing_context_evidence', 0)}")
+            typer.echo(f"  Hallucination Score: {analysis['hallucination_score']:.1f}%")
+            
+            # Display additional metrics
+            if 'summary_statistics' in analysis:
+                stats = analysis['summary_statistics']
+                typer.echo()
+                typer.echo(f"Additional Metrics:")
+                typer.echo(f"  Hallucination Rate: {stats.get('hallucination_rate', 0.0):.1%}")
+                typer.echo(f"  Grounding Rate: {stats.get('grounding_rate', 0.0):.1%}")
+                typer.echo(f"  Context Support Rate: {stats.get('context_support_rate', 0.0):.1%}")
+                typer.echo(f"  Claim Density: {stats.get('claim_density', 0.0):.3f} claims/word")
+                typer.echo(f"  Average Claim Length: {stats.get('average_claim_length', 0.0):.1f} words")
+            
+            # Display context analysis summary
+            if 'context_analysis' in analysis and 'summary' in analysis['context_analysis']:
+                ctx_summary = analysis['context_analysis']['summary']
+                typer.echo()
+                typer.echo(f"Context Analysis:")
+                typer.echo(f"  Total Chunks: {ctx_summary.get('total_chunks', 0)}")
+                typer.echo(f"  Relevant Chunks: {ctx_summary.get('relevant_chunks', 0)}")
+                typer.echo(f"  Context Precision: {ctx_summary.get('context_precision', 0.0):.3f}")
+                typer.echo(f"  Noise Chunks: {ctx_summary.get('noise_chunks', 0)}")
+                typer.echo(f"  Average Relevance Score: {ctx_summary.get('average_relevance_score', 0.0):.3f}")
             
             typer.echo()
     

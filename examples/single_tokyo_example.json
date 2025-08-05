@@ -1,0 +1,13 @@
+[
+  {
+    "scenario": "Low Risk - Minor Unsupported Claims",
+    "question": "What is the population of Tokyo?",
+    "context": [
+      "Tokyo is the capital city of Japan with 14 million people.",
+      "Mount Fuji is visible from Tokyo on clear days.",
+      "Japanese cuisine is popular worldwide."
+    ],
+    "answer": "Tokyo has a population of 14 million people and is known for its excellent sushi restaurants. The city is also famous for its cherry blossom season in spring and has the busiest train station in the world.",
+    "ground_truth": "Tokyo has a population of 14 million people."
+  }
+] 

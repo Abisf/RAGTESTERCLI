@@ -1,0 +1,11 @@
+[
+  {
+    "question": "What are the features of the Eiffel Tower?",
+    "context": [
+      "The Eiffel Tower is located in Paris, France. It was built in 1889 and stands 324 meters tall. The tower has three levels open to the public.",
+      "The Eiffel Tower is made of iron and was designed by Gustave Eiffel. It was originally built as a temporary exhibit for the 1889 World's Fair.",
+      "The tower has restaurants on the first and second levels. Visitors can take elevators or stairs to reach the top observation deck."
+    ],
+    "answer": "The Eiffel Tower is located in Paris, France. It was built in 1889 and stands 324 meters tall. The tower has three levels open to the public. The Eiffel Tower is made of iron and was designed by Gustave Eiffel. It has restaurants on the first and second levels. Visitors can take elevators to reach the top."
+  }
+] 
