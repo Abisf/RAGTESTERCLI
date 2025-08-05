@@ -70,6 +70,10 @@ pip install --no-deps ragchecker  # Limited functionality
 # Create .env file
 cp .env.example .env
 # Edit .env with your API keys
+
+# Or set environment variables directly:
+export OPENAI_API_KEY=sk-your-key-here
+export ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
 
 ### Basic Usage
@@ -81,7 +85,7 @@ python cli.py test --input examples/test.json --metric faithfulness_ragas --llm-
 # Comprehensive analysis with detailed diagnostics
 python cli.py analyze --input examples/test.json --metric faithfulness --llm-model gpt-3.5-turbo
 
-# Multi-provider support
+# OpenRouter support (100+ models)
 python cli.py analyze --input examples/test.json --metric hallucination --llm-model anthropic/claude-3-haiku --api-base https://openrouter.ai/api/v1
 
 # Context precision analysis with dual metrics
@@ -214,14 +218,13 @@ RAGTESTERCLI/
 
 ### Multi-Provider LLM Support
 ```bash
-# OpenAI
+# OpenAI (Direct)
 python cli.py analyze --input test.json --metric faithfulness --llm-model gpt-4
 
-# OpenRouter (Claude)
+# OpenRouter (100+ models)
+python cli.py analyze --input test.json --metric faithfulness --llm-model gpt-3.5-turbo --api-base https://openrouter.ai/api/v1
 python cli.py analyze --input test.json --metric hallucination --llm-model anthropic/claude-3-haiku --api-base https://openrouter.ai/api/v1
-
-# Google Gemini
-python cli.py analyze --input test.json --metric context_precision --llm-model gemini-pro
+python cli.py analyze --input test.json --metric context_precision --llm-model google/gemini-pro --api-base https://openrouter.ai/api/v1
 ```
 
 ### Environment Variables
@@ -231,6 +234,18 @@ OPENAI_API_KEY=your_openai_key
 OPENAI_API_BASE=https://api.openai.com/v1
 RAGCLI_LLM_MODEL=gpt-4
 ```
+
+**Supported Environment Variables:**
+- `OPENAI_API_KEY` - OpenAI API key (default, also used for OpenRouter)
+- `ANTHROPIC_API_KEY` - Anthropic Claude API key (direct access)
+- `OPENAI_API_BASE` - Custom API base URL (for OpenRouter, etc.)
+- `RAGCLI_LLM_MODEL` - Default model to use
+
+**Provider Detection:**
+The CLI automatically detects the provider from the model name:
+- `gpt-*` → `OPENAI_API_KEY`
+- `claude-*` → `ANTHROPIC_API_KEY`
+- Unknown models → `OPENAI_API_KEY` (default)
 
 ### Output Formats
 ```bash
